@@ -62,6 +62,20 @@ const batchSizeInput = document.getElementById('batch-size');
 const batchDelayInput = document.getElementById('batch-delay');
 const batchSettingsFields = document.getElementById('batch-settings-fields');
 
+// Elementos de la interfaz - Setters
+const settersPasteZone = document.getElementById('setters-paste-zone');
+const btnClearSetters = document.getElementById('btn-clear-setters');
+const cardSettersPreview = document.getElementById('card-setters-preview');
+const selectSetterPhone = document.getElementById('select-setter-phone');
+const selectSetterName = document.getElementById('select-setter-name');
+const selectSetterDate = document.getElementById('select-setter-date');
+const selectSetterTime = document.getElementById('select-setter-time');
+const settersTableBody = document.getElementById('setters-table-body');
+const setterTemplateTextArea = document.getElementById('setter-template-text-area');
+const setterVariableButtons = document.getElementById('setter-variable-buttons');
+const settersCountText = document.getElementById('setters-count-text');
+const btnLoadSettersToConsole = document.getElementById('btn-load-setters-to-console');
+
 // Datos en memoria en el Frontend
 let parsedHeaders = [];
 let parsedRows = []; // array de objetos con las celdas
@@ -76,10 +90,19 @@ let campaignData = {
     queue: []
 };
 
+// Datos en memoria - Setters
+let setterParsedHeaders = [];
+let setterParsedRows = [];
+let selectedSetterPhoneCol = '';
+let selectedSetterNameCol = '';
+let selectedSetterDateCol = '';
+let selectedSetterTimeCol = '';
+
 // 1. Manejo de Pestañas (Tabs)
 const tabTitles = {
     'tab-dashboard': { title: 'Conexión con WhatsApp', subtitle: 'Vincular tu cuenta de WhatsApp Business o Personal' },
     'tab-leads': { title: 'Cargar Leads', subtitle: 'Importar números y nombres desde Excel, Sheets o CSV' },
+    'tab-setters': { title: 'Confirmaciones de Setters', subtitle: 'Filtrar citas confirmadas y cargar mensajes de asistencia' },
     'tab-template': { title: 'Plantilla de Mensaje', subtitle: 'Redactar el texto personalizado para el envío' },
     'tab-console': { title: 'Consola de Control', subtitle: 'Supervisar y ejecutar la campaña de envío' }
 };
@@ -832,3 +855,365 @@ btnExportReport.addEventListener('click', () => {
     link.click();
     document.body.removeChild(link);
 });
+
+// ==========================================
+// 6. Lógica de Pestaña "Confirmar Setters"
+// ==========================================
+
+// Función para validar si un color es verde claro
+function isLightGreen(colorStr) {
+    if (!colorStr) return false;
+    colorStr = colorStr.toLowerCase().trim();
+
+    // 1. Formato Hexadecimal
+    if (colorStr.startsWith('#')) {
+        let r = 0, g = 0, b = 0;
+        if (colorStr.length === 7) {
+            r = parseInt(colorStr.substring(1, 3), 16);
+            g = parseInt(colorStr.substring(3, 5), 16);
+            b = parseInt(colorStr.substring(5, 7), 16);
+        } else if (colorStr.length === 4) {
+            r = parseInt(colorStr[1] + colorStr[1], 16);
+            g = parseInt(colorStr[2] + colorStr[2], 16);
+            b = parseInt(colorStr[3] + colorStr[3], 16);
+        }
+        return checkGreenRgb(r, g, b);
+    }
+
+    // 2. Formato RGB
+    if (colorStr.startsWith('rgb')) {
+        const matches = colorStr.match(/\d+/g);
+        if (matches && matches.length >= 3) {
+            const r = parseInt(matches[0]);
+            const g = parseInt(matches[1]);
+            const b = parseInt(matches[2]);
+            return checkGreenRgb(r, g, b);
+        }
+    }
+
+    // 3. Nombres de colores
+    const greenNames = ['lightgreen', 'palegreen', 'lime', 'green', 'limegreen', 'springgreen'];
+    return greenNames.some(name => colorStr.includes(name));
+}
+
+function checkGreenRgb(r, g, b) {
+    // Tolerancia para verde claro (ej: #b7e1cd o #d9ead3)
+    return (g > r + 8 && g > b + 8 && g > 120);
+}
+
+// Evento de pegar en la zona de setters
+if (settersPasteZone) {
+    settersPasteZone.addEventListener('paste', (e) => {
+        e.preventDefault();
+        
+        const htmlData = e.clipboardData.getData('text/html');
+        if (!htmlData) {
+            alert("Por favor, copia las celdas directamente desde Google Sheets o Excel para capturar los colores de fondo.");
+            return;
+        }
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlData, 'text/html');
+        const rows = doc.querySelectorAll('tr');
+
+        if (rows.length === 0) {
+            alert("No se pudo detectar ninguna fila en las celdas pegadas.");
+            return;
+        }
+
+        const parsedData = [];
+        let headers = [];
+
+        rows.forEach((tr, rowIndex) => {
+            const cells = tr.querySelectorAll('td, th');
+            if (cells.length === 0) return;
+
+            const rowData = [];
+            let isRowConfirmed = false;
+
+            cells.forEach((cell) => {
+                const text = cell.innerText || cell.textContent || '';
+                const cleanText = text.trim();
+                
+                // Buscar color de fondo
+                const bgColor = cell.style.backgroundColor || cell.getAttribute('bgcolor') || '';
+                const isGreen = isLightGreen(bgColor);
+
+                if (isGreen) {
+                    isRowConfirmed = true;
+                }
+
+                rowData.push({
+                    text: cleanText,
+                    isGreen: isGreen
+                });
+            });
+
+            if (rowIndex === 0) {
+                headers = rowData.map(c => c.text || 'Columna');
+            } else {
+                if (isRowConfirmed) {
+                    const rowObj = {};
+                    rowData.forEach((cell, cellIndex) => {
+                        const header = headers[cellIndex] || `Columna_${cellIndex}`;
+                        rowObj[header] = cell.text;
+                    });
+                    parsedData.push(rowObj);
+                }
+            }
+        });
+
+        // Limpiar el contenido del div y colocar un texto de éxito
+        settersPasteZone.innerHTML = `<div class="text-center success-text font-semibold"><i class="fas fa-check-circle"></i> ¡Planilla procesada con éxito! Se encontraron ${parsedData.length} leads confirmados.</div>`;
+
+        if (parsedData.length === 0) {
+            alert("No se encontraron filas resaltadas en verde claro (confirmadas). Asegúrate de que los setters las hayan coloreado.");
+            btnClearSetters.click();
+            return;
+        }
+
+        setterParsedHeaders = headers;
+        setterParsedRows = parsedData;
+
+        populateSetterColumnSelectors();
+        renderSettersPreviewTable();
+        updateSetterVariableButtons();
+        
+        cardSettersPreview.classList.remove('hidden');
+        cardSettersPreview.scrollIntoView({ behavior: 'smooth' });
+    });
+
+    // Limpiar setters
+    btnClearSetters.addEventListener('click', () => {
+        settersPasteZone.innerHTML = `
+            <div class="paste-zone-placeholder">
+                <i class="fas fa-clipboard-list"></i>
+                <p>Haz clic aquí y presiona <b>Ctrl+V</b> para pegar las celdas del Sheet</p>
+            </div>
+        `;
+        cardSettersPreview.classList.add('hidden');
+        setterParsedHeaders = [];
+        setterParsedRows = [];
+        selectedSetterPhoneCol = '';
+        selectedSetterNameCol = '';
+        selectedSetterDateCol = '';
+        selectedSetterTimeCol = '';
+    });
+}
+
+function populateSetterColumnSelectors() {
+    selectSetterPhone.innerHTML = '';
+    selectSetterName.innerHTML = '';
+    selectSetterDate.innerHTML = '';
+    selectSetterTime.innerHTML = '';
+
+    // Opción vacía opcional para el nombre
+    const emptyNameOpt = new Option('-- No usar nombre --', '');
+    selectSetterName.add(emptyNameOpt);
+
+    setterParsedHeaders.forEach(header => {
+        const optPhone = new Option(header, header);
+        const optName = new Option(header, header);
+        const optDate = new Option(header, header);
+        const optTime = new Option(header, header);
+
+        selectSetterPhone.add(optPhone);
+        selectSetterName.add(optName);
+        selectSetterDate.add(optDate);
+        selectSetterTime.add(optTime);
+    });
+
+    // Auto-detectar
+    const phoneMatch = setterParsedHeaders.find(h => /tel|phone|num|cel|movil/i.test(h));
+    const nameMatch = setterParsedHeaders.find(h => /nom|name|cli|lead/i.test(h));
+    const dateMatch = setterParsedHeaders.find(h => /fech|date|dia|agenda|original/i.test(h));
+    const timeMatch = setterParsedHeaders.find(h => /hor|time|local/i.test(h));
+
+    // Si hay un encabezado que contenga "local" pero no "fecha", asumimos que es hora local
+    const localDateMatch = setterParsedHeaders.find(h => /fecha.*local|local.*fecha/i.test(h));
+    const localTimeMatch = setterParsedHeaders.find(h => /hora.*local|local.*hora/i.test(h));
+
+    if (phoneMatch) selectSetterPhone.value = phoneMatch;
+    if (nameMatch) selectSetterName.value = nameMatch;
+    
+    if (localDateMatch) {
+        selectSetterDate.value = localDateMatch;
+    } else if (dateMatch) {
+        selectSetterDate.value = dateMatch;
+    }
+
+    if (localTimeMatch) {
+        selectSetterTime.value = localTimeMatch;
+    } else if (timeMatch) {
+        selectSetterTime.value = timeMatch;
+    }
+
+    selectedSetterPhoneCol = selectSetterPhone.value;
+    selectedSetterNameCol = selectSetterName.value;
+    selectedSetterDateCol = selectSetterDate.value;
+    selectedSetterTimeCol = selectSetterTime.value;
+
+    selectSetterPhone.onchange = (e) => { selectedSetterPhoneCol = e.target.value; renderSettersPreviewTable(); };
+    selectSetterName.onchange = (e) => { selectedSetterNameCol = e.target.value; renderSettersPreviewTable(); };
+    selectSetterDate.onchange = (e) => { selectedSetterDateCol = e.target.value; renderSettersPreviewTable(); };
+    selectSetterTime.onchange = (e) => { selectedSetterTimeCol = e.target.value; renderSettersPreviewTable(); };
+}
+
+function renderSettersPreviewTable() {
+    settersTableBody.innerHTML = '';
+    
+    setterParsedRows.forEach((row, idx) => {
+        const tr = document.createElement('tr');
+        
+        const tdIdx = document.createElement('td');
+        tdIdx.textContent = idx + 1;
+        tr.appendChild(tdIdx);
+
+        const tdName = document.createElement('td');
+        tdName.textContent = selectedSetterNameCol ? row[selectedSetterNameCol] : 'N/A';
+        tr.appendChild(tdName);
+
+        const tdPhone = document.createElement('td');
+        tdPhone.textContent = selectedSetterPhoneCol ? row[selectedSetterPhoneCol] : 'N/A';
+        tr.appendChild(tdPhone);
+
+        // Input para Fecha Local
+        const tdDate = document.createElement('td');
+        const dateVal = selectedSetterDateCol ? row[selectedSetterDateCol] : '';
+        const inputDate = document.createElement('input');
+        inputDate.type = 'text';
+        inputDate.className = 'setter-edit-input';
+        inputDate.value = dateVal;
+        inputDate.oninput = (e) => {
+            row[selectedSetterDateCol] = e.target.value;
+        };
+        tdDate.appendChild(inputDate);
+        tr.appendChild(tdDate);
+
+        // Input para Hora Local
+        const tdTime = document.createElement('td');
+        const timeVal = selectedSetterTimeCol ? row[selectedSetterTimeCol] : '';
+        const inputTime = document.createElement('input');
+        inputTime.type = 'text';
+        inputTime.className = 'setter-edit-input';
+        inputTime.value = timeVal;
+        inputTime.oninput = (e) => {
+            row[selectedSetterTimeCol] = e.target.value;
+        };
+        tdTime.appendChild(inputTime);
+        tr.appendChild(tdTime);
+
+        // Borrar fila
+        const tdActions = document.createElement('td');
+        const btnDel = document.createElement('button');
+        btnDel.className = 'btn btn-danger btn-sm';
+        btnDel.innerHTML = '<i class="fas fa-trash-alt"></i>';
+        btnDel.onclick = () => {
+            setterParsedRows.splice(idx, 1);
+            renderSettersPreviewTable();
+        };
+        tdActions.appendChild(btnDel);
+        tr.appendChild(tdDel);
+
+        settersTableBody.appendChild(tr);
+    });
+
+    settersCountText.textContent = `${setterParsedRows.length} leads confirmados encontrados.`;
+}
+
+function updateSetterVariableButtons() {
+    setterVariableButtons.innerHTML = '';
+    const spanText = document.createElement('span');
+    spanText.className = 'text-muted text-sm';
+    spanText.textContent = 'Insertar variable: ';
+    setterVariableButtons.appendChild(spanText);
+
+    const vars = ['{Nombre}', '{FechaLocal}', '{HoraLocal}'];
+    vars.forEach(v => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-tag';
+        btn.textContent = v;
+        btn.addEventListener('click', () => {
+            insertTextAtCursor(setterTemplateTextArea, v);
+        });
+        setterVariableButtons.appendChild(btn);
+    });
+}
+
+// Cargar a consola
+if (btnLoadSettersToConsole) {
+    btnLoadSettersToConsole.addEventListener('click', () => {
+        if (setterParsedRows.length === 0) {
+            alert("No hay ningún lead confirmado cargado.");
+            return;
+        }
+
+        if (!selectedSetterPhoneCol) {
+            alert("Por favor selecciona la columna de teléfono.");
+            return;
+        }
+
+        const template = setterTemplateTextArea.value.trim();
+        if (!template) {
+            alert("Por favor escribe la plantilla de mensaje.");
+            return;
+        }
+
+        if (!confirm(`¿Deseas cargar estos ${setterParsedRows.length} leads confirmados en la consola de envío?`)) {
+            return;
+        }
+
+        // Armamos parsedRows globales
+        parsedRows = setterParsedRows.map(row => {
+            return { ...row };
+        });
+
+        // Configurar los selectores globales
+        selectedPhoneCol = selectedSetterPhoneCol;
+        selectedNameCol = selectedSetterNameCol;
+
+        // Traducimos las variables locales del confirmador a las columnas reales
+        let globalTemplate = template;
+        if (selectedSetterNameCol) {
+            globalTemplate = globalTemplate.replace(/{Nombre}/g, `{${selectedSetterNameCol}}`);
+        }
+        if (selectedSetterDateCol) {
+            globalTemplate = globalTemplate.replace(/{FechaLocal}/g, `{${selectedSetterDateCol}}`);
+        }
+        if (selectedSetterTimeCol) {
+            globalTemplate = globalTemplate.replace(/{HoraLocal}/g, `{${selectedSetterTimeCol}}`);
+        }
+
+        // Cargar plantilla global
+        templateTextArea.value = globalTemplate;
+        updatePreview();
+
+        // Armar campaña
+        campaignData = {
+            status: 'STOPPED',
+            index: 0,
+            total: parsedRows.length,
+            queue: parsedRows.map((r, idx) => {
+                const name = selectedNameCol ? r[selectedNameCol] : 'Contacto';
+                const phone = r[selectedPhoneCol];
+                const text = compileTemplate(globalTemplate, r);
+                return {
+                    id: idx + 1,
+                    name: name,
+                    phone: phone,
+                    status: 'pending',
+                    text: text
+                };
+            })
+        };
+
+        // Renderizar consola
+        updateConsoleUI();
+        updateConsoleButtonsState();
+
+        // Mover a la pestaña de consola
+        document.getElementById('btn-tab-console').click();
+
+        alert(`¡Campaña cargada con éxito! ${parsedRows.length} mensajes personalizados listos en la Consola.`);
+    });
+}

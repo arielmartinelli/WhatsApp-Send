@@ -971,3 +971,78 @@ textarea#leads-paste-area {
 
 .mb-3 { margin-bottom: 16px; }
 
+.paste-zone-wrapper {
+    margin-top: 16px;
+}
+
+.paste-zone {
+    min-height: 150px;
+    max-height: 250px;
+    overflow-y: auto;
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 2px dashed var(--card-border);
+    border-radius: 12px;
+    padding: 24px;
+    color: var(--text-primary);
+    outline: none;
+    cursor: text;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: var(--transition-fast);
+}
+
+.paste-zone:focus {
+    border-color: rgba(16, 185, 129, 0.5);
+    background-color: rgba(16, 185, 129, 0.02);
+}
+
+.paste-zone-placeholder {
+    text-align: center;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.paste-zone-placeholder i {
+    font-size: 36px;
+    margin-bottom: 12px;
+    color: var(--text-muted);
+}
+
+.paste-zone-placeholder p {
+    font-size: 14px;
+}
+
+/* Ocultar placeholder si el div no está vacío (tiene elementos HTML pegados) */
+.paste-zone:not(:empty) .paste-zone-placeholder {
+    display: none !important;
+}
+
+.setter-template-box {
+    border-top: 1px solid var(--card-border);
+    padding-top: 20px;
+}
+
+.font-semibold {
+    font-weight: 600;
+}
+
+.setter-edit-input {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--card-border);
+    color: var(--text-primary);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    width: 100%;
+    outline: none;
+    transition: var(--transition-fast);
+}
+
+.setter-edit-input:focus {
+    border-color: rgba(16, 185, 129, 0.5);
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+

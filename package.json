@@ -2,15 +2,44 @@
   "name": "whatsapp-automator",
   "version": "1.0.0",
   "description": "Automatizador gratuito y local de mensajes de WhatsApp Business/Personal",
-  "main": "server.js",
+  "main": "main.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "electron-dev": "electron .",
+    "dist": "electron-builder"
   },
   "dependencies": {
     "express": "^4.21.2",
     "qrcode": "^1.5.4",
     "socket.io": "^4.8.1",
     "whatsapp-web.js": "latest"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^24.13.0"
+  },
+  "build": {
+    "appId": "com.whatsappsend.automator",
+    "productName": "WA Automator",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "portable"
+      ]
+    },
+    "files": [
+      "public/**/*",
+      "server.js",
+      "main.js",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/puppeteer-core/**/*"
+    ]
   },
   "private": true
 }

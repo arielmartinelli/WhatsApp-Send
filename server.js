@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const QRCode = require('qrcode');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
@@ -46,14 +47,53 @@ function initWhatsApp() {
     clientInfo = null;
     io.emit('status-update', { status: whatsappStatus });
 
+    // Buscar Chrome en el sistema para evitar descargar Chromium y reducir tamaño de la App empaquetada
+    function getWindowsChromePath() {
+        const paths = [
+            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+            path.join(process.env.LOCALAPPDATA || '', 'Google\\Chrome\\Application\\chrome.exe')
+        ];
+        for (const p of paths) {
+            if (fs.existsSync(p)) return p;
+        }
+        return null;
+    }
+
+    let chromePath = null;
+    if (process.platform === 'win32') {
+        chromePath = getWindowsChromePath();
+    } else if (process.platform === 'darwin') {
+        if (fs.existsSync('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome')) {
+            chromePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+        }
+    } else if (process.platform === 'linux') {
+        if (fs.existsSync('/usr/bin/google-chrome')) {
+            chromePath = '/usr/bin/google-chrome';
+        }
+    }
+
+    const puppeteerOptions = {
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    };
+
+    if (chromePath) {
+        puppeteerOptions.executablePath = chromePath;
+        console.log(`Usando Chrome del sistema: ${chromePath}`);
+    } else {
+        console.log("Google Chrome no detectado en directorios estándar. Usando Chromium de Puppeteer.");
+    }
+
+    const userHome = require('os').homedir();
+    const authPath = path.join(userHome, '.wa_automator_auth');
+    console.log(`Guardando sesión de WhatsApp en: ${authPath}`);
+
     client = new Client({
         authStrategy: new LocalAuth({
-            dataPath: path.join(__dirname, '.wwebjs_auth')
+            dataPath: authPath
         }),
-        puppeteer: {
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-        }
+        puppeteer: puppeteerOptions
     });
 
     client.on('qr', (qr) => {

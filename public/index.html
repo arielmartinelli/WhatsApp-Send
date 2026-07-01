@@ -34,6 +34,9 @@
                 <button class="nav-btn" data-tab="tab-leads" id="btn-tab-leads">
                     <i class="fas fa-users"></i> <span>Cargar Leads</span>
                 </button>
+                <button class="nav-btn" data-tab="tab-setters" id="btn-tab-setters">
+                    <i class="fas fa-user-check"></i> <span>Confirmar Setters</span>
+                </button>
                 <button class="nav-btn" data-tab="tab-template" id="btn-tab-template">
                     <i class="fas fa-envelope-open-text"></i> <span>Plantilla</span>
                 </button>
@@ -243,6 +246,102 @@
                             
                             <div class="leads-summary mt-3">
                                 <span id="leads-count-text">0 leads cargados listos para enviar.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Setters / Confirmations -->
+            <section class="tab-content hidden" id="tab-setters">
+                <div class="grid-layout vertical">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Confirmación de Asistencia (Setters)</h3>
+                            <span class="badge badge-info">Filtro Verde</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="section-description">Copia las celdas directamente desde tu Google Sheet (asegúrate de incluir la primera fila con títulos como Nombre, Telefono, Fecha Local, Hora Local). El sistema filtrará <b>únicamente los contactos resaltados en verde claro</b>.</p>
+                            
+                            <!-- Paste container for HTML color detection -->
+                            <div class="paste-zone-wrapper">
+                                <div id="setters-paste-zone" class="paste-zone" contenteditable="true">
+                                    <div class="paste-zone-placeholder">
+                                        <i class="fas fa-clipboard-list"></i>
+                                        <p>Haz clic aquí y presiona <b>Ctrl+V</b> para pegar las celdas del Sheet</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex-actions justify-between mt-3">
+                                <button class="btn btn-link text-muted" id="btn-clear-setters">Limpiar datos</button>
+                                <span class="text-xs text-muted"><i class="fas fa-info-circle"></i> Detecta celdas pintadas en verde claro en tu planilla.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filtered Setter Leads Card -->
+                    <div class="card hidden" id="card-setters-preview">
+                        <div class="card-header">
+                            <h3>Leads Confirmados (Filtrados)</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="column-mapping-bar">
+                                <div class="mapping-item">
+                                    <label for="select-setter-phone">Columna de Teléfono:</label>
+                                    <select id="select-setter-phone" class="form-select"></select>
+                                </div>
+                                <div class="mapping-item">
+                                    <label for="select-setter-name">Columna de Nombre:</label>
+                                    <select id="select-setter-name" class="form-select"></select>
+                                </div>
+                                <div class="mapping-item">
+                                    <label for="select-setter-date">Columna de Fecha Local:</label>
+                                    <select id="select-setter-date" class="form-select"></select>
+                                </div>
+                                <div class="mapping-item">
+                                    <label for="select-setter-time">Columna de Hora Local:</label>
+                                    <select id="select-setter-time" class="form-select"></select>
+                                </div>
+                            </div>
+
+                            <div class="leads-table-container">
+                                <table class="leads-table" id="setters-table">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Nombre</th>
+                                            <th>Teléfono</th>
+                                            <th>Fecha Local</th>
+                                            <th>Hora Local</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="setters-table-body">
+                                        <!-- Filtered rows injected here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Template for Setters -->
+                            <div class="setter-template-box mt-4">
+                                <h4 class="mb-2">Plantilla del Mensaje de Confirmación</h4>
+                                <div class="variable-buttons-container mb-2" id="setter-variable-buttons">
+                                    <span class="text-muted text-sm">Insertar variable:</span>
+                                    <button class="btn btn-tag" data-var="{Nombre}">{Nombre}</button>
+                                    <button class="btn btn-tag" data-var="{FechaLocal}">{FechaLocal}</button>
+                                    <button class="btn btn-tag" data-var="{HoraLocal}">{HoraLocal}</button>
+                                </div>
+                                <div class="input-group">
+                                    <textarea id="setter-template-text-area" class="template-editor" rows="5" placeholder="Hola {Nombre}, confirmamos tu sesión para el {FechaLocal} a las {HoraLocal}. ¿Contamos con tu asistencia?"></textarea>
+                                </div>
+                            </div>
+
+                            <div class="flex-actions justify-between mt-3">
+                                <span id="setters-count-text" class="font-semibold text-emerald">0 leads confirmados encontrados.</span>
+                                <button class="btn btn-primary" id="btn-load-setters-to-console">
+                                    <i class="fas fa-paper-plane"></i> Cargar en Consola de Envío
+                                </button>
                             </div>
                         </div>
                     </div>
