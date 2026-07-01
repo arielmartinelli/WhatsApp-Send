@@ -21,9 +21,13 @@ let clientInfo = null;
 
 let campaignQueue = [];
 let campaignIndex = 0;
-let campaignStatus = 'STOPPED'; // STOPPED, RUNNING, PAUSED, FINISHED
+let campaignStatus = 'STOPPED'; // STOPPED, RUNNING, PAUSED, FINISHED, BATCH_WAIT
 let campaignDelays = { min: 10, max: 25 }; // en segundos
 let currentTimeout = null;
+let campaignBatchSize = 20;
+let campaignBatchDelay = 300; // en segundos (5 min)
+let messagesSentInCurrentBatch = 0;
+let batchCooldownEndTime = null;
 
 // Inicializar cliente de WhatsApp
 let client = null;
@@ -162,19 +166,53 @@ async function sendNextMessage() {
     }
 
     campaignIndex++;
-    io.emit('campaign-status', { status: campaignStatus, index: campaignIndex, total: campaignQueue.length });
+    messagesSentInCurrentBatch++;
 
-    if (campaignIndex < campaignQueue.length && campaignStatus === 'RUNNING') {
-        // Calcular delay aleatorio entre min y max en milisegundos
-        const minMs = campaignDelays.min * 1000;
-        const maxMs = campaignDelays.max * 1000;
-        const delay = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+    const hasMoreLeads = campaignIndex < campaignQueue.length;
+    const reachedBatchLimit = messagesSentInCurrentBatch >= campaignBatchSize;
 
-        console.log(`Esperando ${delay / 1000} segundos antes del siguiente envío...`);
-        currentTimeout = setTimeout(sendNextMessage, delay);
-    } else if (campaignIndex >= campaignQueue.length) {
-        campaignStatus = 'FINISHED';
-        io.emit('campaign-status', { status: campaignStatus, index: campaignIndex, total: campaignQueue.length });
+    if (hasMoreLeads && reachedBatchLimit) {
+        // Entrar en cooldown de lote
+        campaignStatus = 'BATCH_WAIT';
+        messagesSentInCurrentBatch = 0;
+        batchCooldownEndTime = Date.now() + (campaignBatchDelay * 1000);
+
+        io.emit('campaign-status', { 
+            status: campaignStatus, 
+            index: campaignIndex, 
+            total: campaignQueue.length,
+            cooldownEndTime: batchCooldownEndTime
+        });
+
+        console.log(`Lote de ${campaignBatchSize} completado. Esperando ${campaignBatchDelay} segundos para el siguiente lote...`);
+        currentTimeout = setTimeout(() => {
+            campaignStatus = 'RUNNING';
+            sendNextMessage();
+        }, campaignBatchDelay * 1000);
+    } else {
+        io.emit('campaign-status', { 
+            status: campaignStatus, 
+            index: campaignIndex, 
+            total: campaignQueue.length,
+            cooldownEndTime: null
+        });
+
+        if (hasMoreLeads && campaignStatus === 'RUNNING') {
+            const minMs = campaignDelays.min * 1000;
+            const maxMs = campaignDelays.max * 1000;
+            const delay = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+
+            console.log(`Esperando ${delay / 1000} segundos antes del siguiente envío...`);
+            currentTimeout = setTimeout(sendNextMessage, delay);
+        } else if (!hasMoreLeads) {
+            campaignStatus = 'FINISHED';
+            io.emit('campaign-status', { 
+                status: campaignStatus, 
+                index: campaignIndex, 
+                total: campaignQueue.length,
+                cooldownEndTime: null
+            });
+        }
     }
 }
 
@@ -194,7 +232,10 @@ io.on('connection', (socket) => {
         index: campaignIndex,
         total: campaignQueue.length,
         queue: campaignQueue,
-        delays: campaignDelays
+        delays: campaignDelays,
+        batchSize: campaignBatchSize,
+        batchDelay: campaignBatchDelay,
+        cooldownEndTime: batchCooldownEndTime
     });
 
     // Acción: Inicializar/Reiniciar conexión de WhatsApp
@@ -224,12 +265,13 @@ io.on('connection', (socket) => {
     socket.on('start-campaign', (data) => {
         // data.leads: array de { id, name, phone, text }
         // data.delays: { min, max }
+        // data.batchSize, data.batchDelay
         if (whatsappStatus !== 'CONNECTED') {
             socket.emit('error-msg', 'WhatsApp no está conectado. Por favor escanea el QR.');
             return;
         }
 
-        if (campaignStatus === 'RUNNING') {
+        if (campaignStatus === 'RUNNING' || campaignStatus === 'BATCH_WAIT') {
             return;
         }
 
@@ -237,16 +279,22 @@ io.on('connection', (socket) => {
         if (campaignStatus === 'STOPPED' || campaignStatus === 'FINISHED') {
             campaignQueue = data.leads.map(lead => ({ ...lead, status: 'pending', error: null }));
             campaignIndex = 0;
+            messagesSentInCurrentBatch = 0;
+            batchCooldownEndTime = null;
         }
 
         campaignDelays = data.delays || { min: 10, max: 25 };
+        campaignBatchSize = data.batchSize || 20;
+        campaignBatchDelay = data.batchDelay || 300; // en segundos
+
         campaignStatus = 'RUNNING';
         
         io.emit('campaign-status', { 
             status: campaignStatus, 
             index: campaignIndex, 
             total: campaignQueue.length,
-            queue: campaignQueue
+            queue: campaignQueue,
+            cooldownEndTime: null
         });
 
         sendNextMessage();
@@ -254,7 +302,7 @@ io.on('connection', (socket) => {
 
     // Acción: Pausar campaña
     socket.on('pause-campaign', () => {
-        if (campaignStatus !== 'RUNNING') return;
+        if (campaignStatus !== 'RUNNING' && campaignStatus !== 'BATCH_WAIT') return;
         campaignStatus = 'PAUSED';
         if (currentTimeout) {
             clearTimeout(currentTimeout);
@@ -268,6 +316,9 @@ io.on('connection', (socket) => {
     socket.on('resume-campaign', () => {
         if (campaignStatus !== 'PAUSED') return;
         campaignStatus = 'RUNNING';
+        // Resetear contador del lote al reanudar manualmente
+        messagesSentInCurrentBatch = 0;
+        batchCooldownEndTime = null;
         io.emit('campaign-status', { status: campaignStatus, index: campaignIndex, total: campaignQueue.length });
         console.log('Campaña reanudada');
         sendNextMessage();
@@ -282,6 +333,8 @@ io.on('connection', (socket) => {
         }
         campaignQueue = [];
         campaignIndex = 0;
+        messagesSentInCurrentBatch = 0;
+        batchCooldownEndTime = null;
         io.emit('campaign-status', { status: campaignStatus, index: campaignIndex, total: 0, queue: [] });
         console.log('Campaña detenida y cola limpiada');
     });

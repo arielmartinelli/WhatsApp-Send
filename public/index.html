@@ -313,17 +313,33 @@
                                 <!-- Delays settings -->
                                 <div class="control-delays-box">
                                     <h4>Ajustes de Velocidad (Antiban)</h4>
-                                    <div class="delays-inputs">
+                                    <div class="delays-inputs font-sm">
                                         <div class="input-field-inline">
-                                            <label for="delay-min">Delay Mín (seg):</label>
+                                            <label for="delay-min">Mín (seg):</label>
                                             <input type="number" id="delay-min" class="form-control width-70" value="10" min="2">
                                         </div>
                                         <div class="input-field-inline">
-                                            <label for="delay-max">Delay Máx (seg):</label>
+                                            <label for="delay-max">Máx (seg):</label>
                                             <input type="number" id="delay-max" class="form-control width-70" value="25" min="3">
                                         </div>
                                     </div>
-                                    <p class="text-xs text-muted mt-2"><i class="fas fa-info-circle"></i> El sistema elegirá un tiempo aleatorio entre estos dos valores para cada mensaje.</p>
+                                    <p class="text-xs text-muted mt-2 mb-3"><i class="fas fa-info-circle"></i> Retraso aleatorio por mensaje.</p>
+                                    
+                                    <h4 class="mt-3">Envío por Lotes (Grupos)</h4>
+                                    <div class="checkbox-field mb-2">
+                                        <input type="checkbox" id="batch-enabled" checked>
+                                        <label for="batch-enabled">Habilitar envío en grupos</label>
+                                    </div>
+                                    <div class="delays-inputs mt-2" id="batch-settings-fields">
+                                        <div class="input-field-inline">
+                                            <label for="batch-size">Lote (leads):</label>
+                                            <input type="number" id="batch-size" class="form-control width-70" value="20" min="1">
+                                        </div>
+                                        <div class="input-field-inline">
+                                            <label for="batch-delay">Espera (min):</label>
+                                            <input type="number" id="batch-delay" class="form-control width-70" value="5" min="1">
+                                        </div>
+                                    </div>
                                 </div>
                                 
                                 <!-- Engine Actions -->

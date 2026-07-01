@@ -57,6 +57,10 @@ const campaignProgressNumbers = document.getElementById('campaign-progress-numbe
 const campaignProgressPercent = document.getElementById('campaign-progress-percent');
 const consoleTableBody = document.getElementById('console-table-body');
 const btnExportReport = document.getElementById('btn-export-report');
+const batchEnabledCheckbox = document.getElementById('batch-enabled');
+const batchSizeInput = document.getElementById('batch-size');
+const batchDelayInput = document.getElementById('batch-delay');
+const batchSettingsFields = document.getElementById('batch-settings-fields');
 
 // Datos en memoria en el Frontend
 let parsedHeaders = [];
@@ -64,6 +68,7 @@ let parsedRows = []; // array de objetos con las celdas
 let selectedPhoneCol = '';
 let selectedNameCol = '';
 let wwebjsStatus = 'DISCONNECTED';
+let cooldownInterval = null;
 let campaignData = {
     status: 'STOPPED',
     index: 0,
@@ -323,6 +328,17 @@ function populateColumnSelectors() {
     });
 }
 
+// Escuchar cambios en checkbox de lotes
+if (batchEnabledCheckbox) {
+    batchEnabledCheckbox.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            batchSettingsFields.classList.remove('hidden');
+        } else {
+            batchSettingsFields.classList.add('hidden');
+        }
+    });
+}
+
 // Renderizar tabla de previsualización en pestaña Cargar Leads
 function renderLeadsPreviewTable() {
     leadsTableBody.innerHTML = '';
@@ -435,7 +451,7 @@ function escapeRegExp(string) {
 function updateConsoleButtonsState() {
     const isWaConnected = (wwebjsStatus === 'CONNECTED');
     const hasLeads = (parsedRows.length > 0);
-    const isCampaignRunning = (campaignData.status === 'RUNNING');
+    const isCampaignRunning = (campaignData.status === 'RUNNING' || campaignData.status === 'BATCH_WAIT');
     const isCampaignPaused = (campaignData.status === 'PAUSED');
 
     if (isWaConnected && hasLeads) {
@@ -509,11 +525,20 @@ socket.on('error-msg', (msg) => {
 });
 
 function updateConsoleUI() {
+    // Limpiar intervalo de cooldown si existe
+    if (cooldownInterval) {
+        clearInterval(cooldownInterval);
+        cooldownInterval = null;
+    }
+
     // Actualizar Badge de Estado de Campaña
     campaignStateBadge.className = 'campaign-status-badge';
     if (campaignData.status === 'RUNNING') {
         campaignStateBadge.textContent = 'EJECUTÁNDOSE';
         campaignStateBadge.classList.add('status-running');
+    } else if (campaignData.status === 'BATCH_WAIT') {
+        campaignStateBadge.textContent = 'ESPERANDO LOTE';
+        campaignStateBadge.classList.add('status-paused');
     } else if (campaignData.status === 'PAUSED') {
         campaignStateBadge.textContent = 'PAUSADO';
         campaignStateBadge.classList.add('status-paused');
@@ -531,7 +556,30 @@ function updateConsoleUI() {
     const percent = total > 0 ? Math.round((index / total) * 100) : 0;
 
     campaignProgressBar.style.width = `${percent}%`;
-    campaignProgressNumbers.textContent = `${index} / ${total} enviados`;
+    
+    if (campaignData.status === 'BATCH_WAIT' && campaignData.cooldownEndTime) {
+        const updateCooldownTimer = () => {
+            const now = Date.now();
+            const totalMs = campaignData.cooldownEndTime - now;
+            const totalSec = Math.max(0, Math.round(totalMs / 1000));
+            
+            if (totalSec <= 0) {
+                campaignProgressNumbers.textContent = `${index} / ${total} enviados - Preparando siguiente lote...`;
+                clearInterval(cooldownInterval);
+                cooldownInterval = null;
+            } else {
+                const mins = Math.floor(totalSec / 60);
+                const secs = totalSec % 60;
+                const timeStr = `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
+                campaignProgressNumbers.textContent = `${index} / ${total} enviados - Siguiente lote en ${timeStr}`;
+            }
+        };
+        updateCooldownTimer();
+        cooldownInterval = setInterval(updateCooldownTimer, 1000);
+    } else {
+        campaignProgressNumbers.textContent = `${index} / ${total} enviados`;
+    }
+    
     campaignProgressPercent.textContent = `${percent}%`;
 
     // Renderizar la tabla de envío en consola si cambió la cola
@@ -653,6 +701,11 @@ btnStartCampaign.addEventListener('click', () => {
         return;
     }
 
+    // Obtener configuración de lotes
+    const batchEnabled = batchEnabledCheckbox ? batchEnabledCheckbox.checked : false;
+    const batchSize = batchEnabled ? (parseInt(batchSizeInput.value) || 20) : 999999;
+    const batchDelay = batchEnabled ? ((parseInt(batchDelayInput.value) || 5) * 60) : 0; // en segundos
+
     // Construir la cola de leads
     const leadsToSend = parsedRows.map((row, index) => {
         const phone = row[selectedPhoneCol];
@@ -669,7 +722,9 @@ btnStartCampaign.addEventListener('click', () => {
 
     socket.emit('start-campaign', {
         leads: leadsToSend,
-        delays: { min: minDelay, max: maxDelay }
+        delays: { min: minDelay, max: maxDelay },
+        batchSize: batchSize,
+        batchDelay: batchDelay
     });
 });
 
