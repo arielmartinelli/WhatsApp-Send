@@ -1,0 +1,16 @@
+{
+  "name": "whatsapp-automator",
+  "version": "1.0.0",
+  "description": "Automatizador gratuito y local de mensajes de WhatsApp Business/Personal",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.1",
+    "whatsapp-web.js": "latest"
+  },
+  "private": true
+}

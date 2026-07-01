@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Lead Sender - Automático & Gratis</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome para Iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <i class="fab fa-whatsapp"></i>
+                </div>
+                <div class="logo-text">
+                    <h2>WA Automator</h2>
+                    <span>Local & Free v1.0</span>
+                </div>
+            </div>
+            
+            <nav class="nav-menu">
+                <button class="nav-btn active" data-tab="tab-dashboard" id="btn-tab-dashboard">
+                    <i class="fas fa-qrcode"></i> <span>Conexión QR</span>
+                </button>
+                <button class="nav-btn" data-tab="tab-leads" id="btn-tab-leads">
+                    <i class="fas fa-users"></i> <span>Cargar Leads</span>
+                </button>
+                <button class="nav-btn" data-tab="tab-template" id="btn-tab-template">
+                    <i class="fas fa-envelope-open-text"></i> <span>Plantilla</span>
+                </button>
+                <button class="nav-btn" data-tab="tab-console" id="btn-tab-console">
+                    <i class="fas fa-paper-plane"></i> <span>Consola de Envío</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-status-card">
+                <div class="status-indicator-dot disconnected" id="side-status-dot"></div>
+                <div class="status-info">
+                    <span class="status-label">Estado de WhatsApp</span>
+                    <span class="status-text" id="side-status-text">Desconectado</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="header-title">
+                    <h1 id="page-title">Conexión con WhatsApp</h1>
+                    <p id="page-subtitle">Vincular tu cuenta de WhatsApp Business o Personal</p>
+                </div>
+                <div class="header-actions">
+                    <div class="connection-badge disconnected" id="header-status-badge">
+                        <i class="fas fa-plug" id="header-status-icon"></i>
+                        <span id="header-status-text">Sin Conexión</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Tab: Dashboard / Connection -->
+            <section class="tab-content active" id="tab-dashboard">
+                <div class="grid-layout">
+                    <div class="card main-card qr-card-container">
+                        <div class="card-header">
+                            <h3>Vincular Dispositivo</h3>
+                            <span class="badge badge-info">Paso 1</span>
+                        </div>
+                        <div class="card-body qr-body">
+                            <!-- State: Disconnected -->
+                            <div class="qr-state" id="state-disconnected">
+                                <div class="state-icon error">
+                                    <i class="fas fa-unlink"></i>
+                                </div>
+                                <h4>Servidor Desconectado</h4>
+                                <p>Inicializando el cliente de WhatsApp en segundo plano. Esto puede demorar unos segundos...</p>
+                                <div class="spinner"></div>
+                            </div>
+
+                            <!-- State: Connecting -->
+                            <div class="qr-state hidden" id="state-connecting">
+                                <div class="state-icon warning">
+                                    <i class="fas fa-circle-notch fa-spin"></i>
+                                </div>
+                                <h4>Abriendo Navegador Automatizado</h4>
+                                <p>Iniciando instancia interna de WhatsApp Web. Preparando código QR...</p>
+                            </div>
+
+                            <!-- State: QR Ready -->
+                            <div class="qr-state hidden" id="state-qr-ready">
+                                <div class="qr-wrapper">
+                                    <img src="" alt="WhatsApp QR Code" id="qr-code-img">
+                                    <div class="qr-overlay hidden" id="qr-loading-overlay">
+                                        <i class="fas fa-sync fa-spin"></i>
+                                    </div>
+                                </div>
+                                <h4>Escanea el código QR</h4>
+                                <p>Abre WhatsApp en tu teléfono, ve a <b>Dispositivos vinculados</b> y presiona <b>Vincular un dispositivo</b>.</p>
+                                <button class="btn btn-secondary btn-sm" id="btn-refresh-qr">
+                                    <i class="fas fa-sync-alt"></i> Regenerar QR
+                                </button>
+                            </div>
+
+                            <!-- State: Connected -->
+                            <div class="qr-state hidden" id="state-connected">
+                                <div class="state-icon success">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <h4 class="success-text">¡Dispositivo Vinculado!</h4>
+                                <div class="device-info-box" id="device-info-box">
+                                    <p><strong>Usuario:</strong> <span id="whatsapp-user-name">-</span></p>
+                                    <p><strong>Número:</strong> <span id="whatsapp-user-phone">-</span></p>
+                                </div>
+                                <div class="alert alert-success">
+                                    <i class="fas fa-shield-alt"></i> Tu sesión está guardada localmente. No necesitarás escanear el QR la próxima vez.
+                                </div>
+                                <button class="btn btn-danger" id="btn-logout-wa">
+                                    <i class="fas fa-sign-out-alt"></i> Cerrar Sesión en WhatsApp
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card sidebar-card instructions-card">
+                        <div class="card-header">
+                            <h3>Recomendaciones de Seguridad</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <strong>¡Muy Importante!</strong>
+                                <p>WhatsApp prohíbe el envío masivo de spam. Para cuidar tu cuenta:</p>
+                            </div>
+                            <ul class="styled-list">
+                                <li>
+                                    <i class="fas fa-clock text-emerald"></i>
+                                    <div>
+                                        <strong>Usa Delays Amplios</strong>
+                                        <span>Configura al menos 10-25 segundos entre mensajes en la pestaña de Consola.</span>
+                                    </div>
+                                </li>
+                                <li>
+                                    <i class="fas fa-user-friends text-emerald"></i>
+                                    <div>
+                                        <strong>Mensajes Personalizados</strong>
+                                        <span>Personaliza cada mensaje con el nombre del contacto. Envía textos diferentes usando variables.</span>
+                                    </div>
+                                </li>
+                                <li>
+                                    <i class="fas fa-heart text-emerald"></i>
+                                    <div>
+                                        <strong>Calienta el número</strong>
+                                        <span>No uses números nuevos de WhatsApp para enviar muchos mensajes. Deben tener conversaciones previas de ida y vuelta.</span>
+                                    </div>
+                                </li>
+                                <li>
+                                    <i class="fas fa-check-double text-emerald"></i>
+                                    <div>
+                                        <strong>Prueba Primero</strong>
+                                        <span>Siempre haz una prueba enviando a tu propio número antes de iniciar una lista larga.</span>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Leads / Import -->
+            <section class="tab-content hidden" id="tab-leads">
+                <div class="grid-layout vertical">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Importar Datos de Leads</h3>
+                            <span class="badge badge-info">Paso 2</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="section-description">Copia tus columnas directamente desde Excel o Google Sheets (por ejemplo, seleccionando las celdas y pulsando Ctrl+C) y pégalas en el recuadro inferior. Asegúrate de incluir la primera fila con los encabezados (ej: Nombre, Teléfono).</p>
+                            
+                            <div class="input-group">
+                                <textarea id="leads-paste-area" placeholder="Ejemplo para pegar:&#10;Nombre	Telefono&#10;Juan Perez	5491122334455&#10;Maria Lopez	34600112233"></textarea>
+                            </div>
+                            
+                            <div class="flex-actions justify-between mt-3">
+                                <div>
+                                    <label class="btn btn-secondary btn-file">
+                                        <i class="fas fa-file-csv"></i> Subir Archivo CSV <input type="file" id="csv-file-input" accept=".csv" class="hidden">
+                                    </label>
+                                    <button class="btn btn-link text-muted" id="btn-clear-leads">Limpiar todo</button>
+                                </div>
+                                <button class="btn btn-primary" id="btn-process-leads">
+                                    <i class="fas fa-magic"></i> Procesar y Analizar Datos
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column Selector & Preview Card (appears after processing) -->
+                    <div class="card hidden" id="card-leads-preview">
+                        <div class="card-header">
+                            <h3>Configurar Campos y Vista Previa</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="column-mapping-bar">
+                                <div class="mapping-item">
+                                    <label for="select-phone-col">Columna de Teléfono (WhatsApp):</label>
+                                    <select id="select-phone-col" class="form-select"></select>
+                                </div>
+                                <div class="mapping-item">
+                                    <label for="select-name-col">Columna de Nombre (Opcional):</label>
+                                    <select id="select-name-col" class="form-select"></select>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i> Los números deben contener el código de país (ej. 54 para Argentina, 34 para España) y no contener espacios ni símbolos. El sistema los limpiará automáticamente de caracteres no numéricos al enviar.
+                            </div>
+
+                            <div class="leads-table-container">
+                                <table class="leads-table" id="leads-table">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Nombre Mapeado</th>
+                                            <th>Teléfono Mapeado</th>
+                                            <th>Columnas Adicionales</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="leads-table-body">
+                                        <!-- Leads populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="leads-summary mt-3">
+                                <span id="leads-count-text">0 leads cargados listos para enviar.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Template -->
+            <section class="tab-content hidden" id="tab-template">
+                <div class="grid-layout">
+                    <div class="card main-card">
+                        <div class="card-header">
+                            <h3>Redactar Plantilla del Mensaje</h3>
+                            <span class="badge badge-info">Paso 3</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="section-description">Escribe el mensaje que quieres enviar. Puedes insertar variables utilizando llaves `{}`, que coincidan con las columnas cargadas. Por ejemplo: `{Nombre}` o `{Telefono}`.</p>
+                            
+                            <div class="variable-buttons-container mb-2" id="variable-buttons">
+                                <span class="text-muted text-sm">Insertar variable:</span>
+                                <!-- Dynamic variable buttons -->
+                                <button class="btn btn-tag" data-var="{Nombre}">{Nombre}</button>
+                            </div>
+                            
+                            <div class="input-group">
+                                <textarea id="template-text-area" class="template-editor" rows="10" placeholder="Hola {Nombre}, ¿cómo estás? Te escribo de parte de nuestra empresa para confirmar tu agenda. Visita este link: http://mi-web.com/agenda"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card sidebar-card preview-card">
+                        <div class="card-header">
+                            <h3>Vista Previa en Tiempo Real</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="whatsapp-chat-preview">
+                                <div class="chat-header">
+                                    <div class="chat-avatar">
+                                        <i class="fas fa-user-circle"></i>
+                                    </div>
+                                    <div class="chat-user-info">
+                                        <h5 id="preview-contact-name">Lead de Prueba</h5>
+                                        <span>En línea</span>
+                                    </div>
+                                </div>
+                                <div class="chat-messages-container">
+                                    <div class="chat-bubble received">
+                                        <p id="chat-preview-text">Escribe tu plantilla para ver una vista previa personalizada aquí.</p>
+                                        <span class="bubble-time">14:32</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Console / Execution -->
+            <section class="tab-content hidden" id="tab-console">
+                <div class="grid-layout vertical">
+                    <!-- Control Panel Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Consola de Control del Envío</h3>
+                            <span class="badge badge-info">Paso 4</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="console-controls-grid">
+                                <!-- Delays settings -->
+                                <div class="control-delays-box">
+                                    <h4>Ajustes de Velocidad (Antiban)</h4>
+                                    <div class="delays-inputs">
+                                        <div class="input-field-inline">
+                                            <label for="delay-min">Delay Mín (seg):</label>
+                                            <input type="number" id="delay-min" class="form-control width-70" value="10" min="2">
+                                        </div>
+                                        <div class="input-field-inline">
+                                            <label for="delay-max">Delay Máx (seg):</label>
+                                            <input type="number" id="delay-max" class="form-control width-70" value="25" min="3">
+                                        </div>
+                                    </div>
+                                    <p class="text-xs text-muted mt-2"><i class="fas fa-info-circle"></i> El sistema elegirá un tiempo aleatorio entre estos dos valores para cada mensaje.</p>
+                                </div>
+                                
+                                <!-- Engine Actions -->
+                                <div class="control-actions-box">
+                                    <h4>Acciones de Campaña</h4>
+                                    <div class="actions-buttons mt-2">
+                                        <button class="btn btn-success btn-lg" id="btn-start-campaign" disabled>
+                                            <i class="fas fa-play"></i> Iniciar Envío
+                                        </button>
+                                        <button class="btn btn-warning btn-lg hidden" id="btn-pause-campaign">
+                                            <i class="fas fa-pause"></i> Pausar
+                                        </button>
+                                        <button class="btn btn-danger btn-lg" id="btn-stop-campaign" disabled>
+                                            <i class="fas fa-stop"></i> Detener
+                                        </button>
+                                    </div>
+                                    <div class="test-send-box mt-3">
+                                        <div class="flex-actions">
+                                            <input type="text" id="test-phone-input" class="form-control" placeholder="Número de prueba (ej: 54911...)">
+                                            <button class="btn btn-secondary btn-sm" id="btn-send-test-msg">Enviar Prueba</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress Status Card -->
+                    <div class="card" id="card-progress-status">
+                        <div class="card-header">
+                            <h3>Progreso del Envío</h3>
+                            <div class="campaign-status-badge status-stopped" id="campaign-state-badge">DETENIDO</div>
+                        </div>
+                        <div class="card-body">
+                            <!-- Progress Bar -->
+                            <div class="progress-container">
+                                <div class="progress-bar-wrapper">
+                                    <div class="progress-bar-fill" id="campaign-progress-bar" style="width: 0%;"></div>
+                                </div>
+                                <div class="progress-text-row mt-2">
+                                    <span id="campaign-progress-numbers">0 / 0 enviados</span>
+                                    <span id="campaign-progress-percent">0%</span>
+                                </div>
+                            </div>
+
+                            <!-- Real-time Status Table -->
+                            <div class="console-table-container mt-3">
+                                <table class="leads-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nombre</th>
+                                            <th>Teléfono</th>
+                                            <th>Estado</th>
+                                            <th>Resultado / Detalle</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="console-table-body">
+                                        <tr>
+                                            <td colspan="4" class="text-center text-muted">Carga leads en el Paso 2 para verlos aquí.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="flex-actions justify-end mt-3">
+                                <button class="btn btn-secondary" id="btn-export-report" disabled>
+                                    <i class="fas fa-download"></i> Descargar Reporte (CSV)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Socket.io library -->
+    <script href="/socket.io/socket.io.js" src="/socket.io/socket.io.js"></script>
+    <!-- Custom APP JS -->
+    <script src="app.js"></script>
+</body>
+</html>
