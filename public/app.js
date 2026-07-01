@@ -71,6 +71,8 @@ const selectSetterName = document.getElementById('select-setter-name');
 const selectSetterDate = document.getElementById('select-setter-date');
 const selectSetterTime = document.getElementById('select-setter-time');
 const selectSetterLink = document.getElementById('select-setter-link');
+const csvFileSetter = document.getElementById('csv-file-setter');
+const csvSetterFilename = document.getElementById('csv-setter-filename');
 const settersTableBody = document.getElementById('setters-table-body');
 const setterTemplateTextArea = document.getElementById('setter-template-text-area');
 const setterVariableButtons = document.getElementById('setter-variable-buttons');
@@ -982,8 +984,90 @@ if (settersPasteZone) {
         updateSetterVariableButtons();
         
         cardSettersPreview.classList.remove('hidden');
-        cardSettersPreview.scrollIntoView({ behavior: 'smooth' });
     });
+
+    // Carga de archivo CSV
+    if (csvFileSetter) {
+        csvFileSetter.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            csvSetterFilename.textContent = file.name;
+            
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                const text = evt.target.result;
+                const parsed = parseCSV(text);
+                
+                if (parsed.rows.length === 0) {
+                    alert("El archivo CSV está vacío o no se pudo procesar.");
+                    return;
+                }
+
+                // Para CSV cargamos todos los datos (el CSV ya viene filtrado desde Calendar)
+                setterParsedHeaders = parsed.headers;
+                setterParsedRows = parsed.rows;
+
+                settersPasteZone.innerHTML = `<div class="text-center success-text font-semibold"><i class="fas fa-check-circle"></i> CSV cargado con éxito: ${file.name} (${parsed.rows.length} confirmados)</div>`;
+
+                populateSetterColumnSelectors();
+                renderSettersPreviewTable();
+                updateSetterVariableButtons();
+                
+                cardSettersPreview.classList.remove('hidden');
+                cardSettersPreview.scrollIntoView({ behavior: 'smooth' });
+            };
+            reader.readAsText(file, 'UTF-8');
+        });
+    }
+
+    // Funciones helper para parsear CSV
+    function parseCSV(text) {
+        const lines = text.split(/\r?\n/);
+        if (lines.length === 0) return { headers: [], rows: [] };
+        
+        const firstLine = lines[0];
+        const separator = firstLine.includes(';') ? ';' : ',';
+        
+        const headers = parseCSVLine(firstLine, separator);
+        const rows = [];
+        
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+            
+            const values = parseCSVLine(line, separator);
+            const row = {};
+            
+            headers.forEach((header, idx) => {
+                row[header] = values[idx] || '';
+            });
+            rows.push(row);
+        }
+        
+        return { headers, rows };
+    }
+
+    function parseCSVLine(line, separator) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === separator && !inQuotes) {
+                result.push(current.trim().replace(/^"|"$/g, ''));
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        result.push(current.trim().replace(/^"|"$/g, ''));
+        return result;
+    }
 
     // Limpiar setters
     btnClearSetters.addEventListener('click', () => {
@@ -991,8 +1075,11 @@ if (settersPasteZone) {
             <div class="paste-zone-placeholder">
                 <i class="fas fa-clipboard-list"></i>
                 <p>Haz clic aquí y presiona <b>Ctrl+V</b> para pegar las celdas del Sheet</p>
+                <p class="text-xs text-muted mt-2">o arrastra tu archivo CSV aquí</p>
             </div>
         `;
+        if (csvFileSetter) csvFileSetter.value = '';
+        if (csvSetterFilename) csvSetterFilename.textContent = '';
         cardSettersPreview.classList.add('hidden');
         setterParsedHeaders = [];
         setterParsedRows = [];

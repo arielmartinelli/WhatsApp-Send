@@ -269,13 +269,20 @@
                                     <div class="paste-zone-placeholder">
                                         <i class="fas fa-clipboard-list"></i>
                                         <p>Haz clic aquí y presiona <b>Ctrl+V</b> para pegar las celdas del Sheet</p>
+                                        <p class="text-xs text-muted mt-2">o arrastra tu archivo CSV aquí</p>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div class="flex-actions justify-between mt-3">
+                            <div class="flex-actions justify-between mt-3 items-center">
+                                <div>
+                                    <label for="csv-file-setter" class="btn btn-outline btn-sm" style="cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 13px;">
+                                        <i class="fas fa-file-import"></i> O subir archivo CSV
+                                    </label>
+                                    <input type="file" id="csv-file-setter" accept=".csv" style="display: none;">
+                                    <span id="csv-setter-filename" class="text-xs text-muted ml-2"></span>
+                                </div>
                                 <button class="btn btn-link text-muted" id="btn-clear-setters">Limpiar datos</button>
-                                <span class="text-xs text-muted"><i class="fas fa-info-circle"></i> Detecta celdas pintadas en verde claro en tu planilla.</span>
                             </div>
                         </div>
                     </div>
