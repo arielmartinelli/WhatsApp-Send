@@ -134,8 +134,19 @@ async function sendNextMessage() {
         // Eliminar +, espacios, guiones y otros caracteres no numéricos
         let cleanPhone = lead.phone.replace(/\D/g, '');
         
-        // WhatsApp requiere el formato de chat id: numero@c.us
-        const chatId = `${cleanPhone}@c.us`;
+        console.log(`Resolviendo número en WhatsApp para: ${cleanPhone}...`);
+        const numberId = await client.getNumberId(cleanPhone);
+        
+        let chatId;
+        if (numberId) {
+            chatId = numberId._serialized;
+            console.log(`Número de WhatsApp verificado y resuelto: ${chatId}`);
+        } else {
+            // Si getNumberId no lo encuentra, hacemos fallback al formato estándar
+            // pero avisamos en consola
+            chatId = `${cleanPhone}@c.us`;
+            console.warn(`getNumberId no pudo verificar el número ${cleanPhone}. Usando formato fallback.`);
+        }
 
         // Enviar el mensaje
         await client.sendMessage(chatId, lead.text);
