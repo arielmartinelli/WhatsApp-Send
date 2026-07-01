@@ -70,6 +70,7 @@ const selectSetterPhone = document.getElementById('select-setter-phone');
 const selectSetterName = document.getElementById('select-setter-name');
 const selectSetterDate = document.getElementById('select-setter-date');
 const selectSetterTime = document.getElementById('select-setter-time');
+const selectSetterLink = document.getElementById('select-setter-link');
 const settersTableBody = document.getElementById('setters-table-body');
 const setterTemplateTextArea = document.getElementById('setter-template-text-area');
 const setterVariableButtons = document.getElementById('setter-variable-buttons');
@@ -97,6 +98,7 @@ let selectedSetterPhoneCol = '';
 let selectedSetterNameCol = '';
 let selectedSetterDateCol = '';
 let selectedSetterTimeCol = '';
+let selectedSetterLinkCol = '';
 
 // 1. Manejo de Pestañas (Tabs)
 const tabTitles = {
@@ -998,6 +1000,7 @@ if (settersPasteZone) {
         selectedSetterNameCol = '';
         selectedSetterDateCol = '';
         selectedSetterTimeCol = '';
+        selectedSetterLinkCol = '';
     });
 }
 
@@ -1006,21 +1009,28 @@ function populateSetterColumnSelectors() {
     selectSetterName.innerHTML = '';
     selectSetterDate.innerHTML = '';
     selectSetterTime.innerHTML = '';
+    selectSetterLink.innerHTML = '';
 
     // Opción vacía opcional para el nombre
     const emptyNameOpt = new Option('-- No usar nombre --', '');
     selectSetterName.add(emptyNameOpt);
+    
+    // Opción vacía opcional para el link
+    const emptyLinkOpt = new Option('-- No usar link --', '');
+    selectSetterLink.add(emptyLinkOpt);
 
     setterParsedHeaders.forEach(header => {
         const optPhone = new Option(header, header);
         const optName = new Option(header, header);
         const optDate = new Option(header, header);
         const optTime = new Option(header, header);
+        const optLink = new Option(header, header);
 
         selectSetterPhone.add(optPhone);
         selectSetterName.add(optName);
         selectSetterDate.add(optDate);
         selectSetterTime.add(optTime);
+        selectSetterLink.add(optLink);
     });
 
     // Auto-detectar
@@ -1028,6 +1038,7 @@ function populateSetterColumnSelectors() {
     const nameMatch = setterParsedHeaders.find(h => /nom|name|cli|lead/i.test(h));
     const dateMatch = setterParsedHeaders.find(h => /fech|date|dia|agenda|original/i.test(h));
     const timeMatch = setterParsedHeaders.find(h => /hor|time|local/i.test(h));
+    const linkMatch = setterParsedHeaders.find(h => /link|meet|url/i.test(h));
 
     // Si hay un encabezado que contenga "local" pero no "fecha", asumimos que es hora local
     const localDateMatch = setterParsedHeaders.find(h => /fecha.*local|local.*fecha/i.test(h));
@@ -1047,16 +1058,20 @@ function populateSetterColumnSelectors() {
     } else if (timeMatch) {
         selectSetterTime.value = timeMatch;
     }
+    
+    if (linkMatch) selectSetterLink.value = linkMatch;
 
     selectedSetterPhoneCol = selectSetterPhone.value;
     selectedSetterNameCol = selectSetterName.value;
     selectedSetterDateCol = selectSetterDate.value;
     selectedSetterTimeCol = selectSetterTime.value;
+    selectedSetterLinkCol = selectSetterLink.value;
 
     selectSetterPhone.onchange = (e) => { selectedSetterPhoneCol = e.target.value; renderSettersPreviewTable(); };
     selectSetterName.onchange = (e) => { selectedSetterNameCol = e.target.value; renderSettersPreviewTable(); };
     selectSetterDate.onchange = (e) => { selectedSetterDateCol = e.target.value; renderSettersPreviewTable(); };
     selectSetterTime.onchange = (e) => { selectedSetterTimeCol = e.target.value; renderSettersPreviewTable(); };
+    selectSetterLink.onchange = (e) => { selectedSetterLinkCol = e.target.value; renderSettersPreviewTable(); };
 }
 
 function renderSettersPreviewTable() {
@@ -1103,6 +1118,19 @@ function renderSettersPreviewTable() {
         tdTime.appendChild(inputTime);
         tr.appendChild(tdTime);
 
+        // Input para Link de Meet
+        const tdLink = document.createElement('td');
+        const linkVal = selectedSetterLinkCol ? row[selectedSetterLinkCol] : '';
+        const inputLink = document.createElement('input');
+        inputLink.type = 'text';
+        inputLink.className = 'setter-edit-input';
+        inputLink.value = linkVal;
+        inputLink.oninput = (e) => {
+            row[selectedSetterLinkCol] = e.target.value;
+        };
+        tdLink.appendChild(inputLink);
+        tr.appendChild(tdLink);
+
         // Borrar fila
         const tdActions = document.createElement('td');
         const btnDel = document.createElement('button');
@@ -1113,7 +1141,7 @@ function renderSettersPreviewTable() {
             renderSettersPreviewTable();
         };
         tdActions.appendChild(btnDel);
-        tr.appendChild(tdDel);
+        tr.appendChild(tdActions);
 
         settersTableBody.appendChild(tr);
     });
@@ -1128,7 +1156,7 @@ function updateSetterVariableButtons() {
     spanText.textContent = 'Insertar variable: ';
     setterVariableButtons.appendChild(spanText);
 
-    const vars = ['{Nombre}', '{FechaLocal}', '{HoraLocal}'];
+    const vars = ['{Nombre}', '{FechaLocal}', '{HoraLocal}', '{Link}'];
     vars.forEach(v => {
         const btn = document.createElement('button');
         btn.className = 'btn btn-tag';
@@ -1182,6 +1210,9 @@ if (btnLoadSettersToConsole) {
         }
         if (selectedSetterTimeCol) {
             globalTemplate = globalTemplate.replace(/{HoraLocal}/g, `{${selectedSetterTimeCol}}`);
+        }
+        if (selectedSetterLinkCol) {
+            globalTemplate = globalTemplate.replace(/{Link}/g, `{${selectedSetterLinkCol}}`);
         }
 
         // Cargar plantilla global
