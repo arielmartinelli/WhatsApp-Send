@@ -1310,7 +1310,8 @@ if (btnLoadSettersToConsole) {
             return { ...row };
         });
 
-        // Configurar los selectores globales
+        // Configurar los selectores y cabeceras globales
+        parsedHeaders = [...setterParsedHeaders];
         selectedPhoneCol = selectedSetterPhoneCol;
         selectedNameCol = selectedSetterNameCol;
 
