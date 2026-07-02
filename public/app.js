@@ -1399,19 +1399,19 @@ if (btnLoadSettersToConsole) {
         // Traducimos las variables locales del confirmador a las columnas reales
         let globalTemplate = template;
         if (selectedSetterNameCol) {
-            globalTemplate = globalTemplate.replace(/{Nombre}/g, `{${selectedSetterNameCol}}`);
+            globalTemplate = globalTemplate.replace(/{Nombre}/gi, `{${selectedSetterNameCol}}`);
         }
         if (selectedSetterDateCol) {
-            globalTemplate = globalTemplate.replace(/{FechaLocal}/g, `{${selectedSetterDateCol}}`);
+            globalTemplate = globalTemplate.replace(/{FechaLocal}/gi, `{${selectedSetterDateCol}}`);
         }
         if (selectedSetterTimeCol) {
-            globalTemplate = globalTemplate.replace(/{HoraLocal}/g, `{${selectedSetterTimeCol}}`);
+            globalTemplate = globalTemplate.replace(/{HoraLocal}/gi, `{${selectedSetterTimeCol}}`);
         }
         if (selectedSetterLinkCol) {
-            globalTemplate = globalTemplate.replace(/{Link}/g, `{${selectedSetterLinkCol}}`);
+            globalTemplate = globalTemplate.replace(/{Link}/gi, `{${selectedSetterLinkCol}}`);
         }
         if (selectedSetterCountryCol) {
-            globalTemplate = globalTemplate.replace(/{Pais}/g, `{${selectedSetterCountryCol}}`);
+            globalTemplate = globalTemplate.replace(/{Pais}/gi, `{${selectedSetterCountryCol}}`);
         }
 
         // Cargar historial para filtrar duplicados
