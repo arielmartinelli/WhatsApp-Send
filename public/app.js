@@ -1333,6 +1333,7 @@ function renderSettersPreviewTable() {
     });
 
     settersCountText.textContent = `${setterParsedRows.length} leads confirmados encontrados.`;
+    updateSetterVariableButtons();
 }
 
 function updateSetterVariableButtons() {
@@ -1539,8 +1540,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (leadsSyncStartDate) leadsSyncStartDate.value = todayStr;
     if (leadsSyncEndDate) leadsSyncEndDate.value = todayStr;
 
-    // Inicializar selectores de plantillas
+    // Inicializar selectores de plantillas y botones de variables de setters
     populateTemplateSelectors();
+    updateSetterVariableButtons();
 });
 
 // Lógica de Sincronización Directa de Leads desde Google Web App
