@@ -37,9 +37,9 @@ const selectNameCol = document.getElementById('select-name-col');
 const leadsTableBody = document.getElementById('leads-table-body');
 const leadsCountText = document.getElementById('leads-count-text');
 
-// Elementos de la interfaz - Plantilla
-const templateTextArea = document.getElementById('template-text-area');
-const variableButtonsContainer = document.getElementById('variable-buttons');
+// Elementos de la interfaz - Plantilla (Mapeado a Leads Evento)
+const templateTextArea = document.getElementById('event-template-text-area');
+const variableButtonsContainer = document.getElementById('event-variable-buttons');
 const previewContactName = document.getElementById('preview-contact-name');
 const chatPreviewText = document.getElementById('chat-preview-text');
 
@@ -96,11 +96,15 @@ const leadsSyncEndDate = document.getElementById('leads-sync-end-date');
 const leadsSyncColorId = document.getElementById('leads-sync-color-id');
 const btnSyncLeadsCampaign = document.getElementById('btn-sync-leads-campaign');
 
-// Elementos de la interfaz - Gestor de Plantillas (Principal y Setters)
-const selectSavedTemplate = document.getElementById('select-saved-template');
-const templateNameInput = document.getElementById('template-name-input');
-const btnSaveTemplate = document.getElementById('btn-save-template');
-const btnDeleteTemplate = document.getElementById('btn-delete-template');
+// Elementos de la interfaz - Gestor de Plantillas (Leads Evento y Setters)
+const selectEventTemplate = document.getElementById('select-event-template');
+const eventTemplateNameInput = document.getElementById('event-template-name-input');
+const btnSaveEventTemplate = document.getElementById('btn-save-event-template');
+const btnDeleteEventTemplate = document.getElementById('btn-delete-event-template');
+const eventVariableButtons = document.getElementById('event-variable-buttons');
+const eventTemplateTextArea = document.getElementById('event-template-text-area');
+const btnLoadLeadsToConsole = document.getElementById('btn-load-leads-to-console');
+
 const selectSetterTemplate = document.getElementById('select-setter-template');
 const setterTemplateNameInput = document.getElementById('setter-template-name-input');
 const btnSaveSetterTemplate = document.getElementById('btn-save-setter-template');
@@ -132,9 +136,8 @@ let selectedSetterCountryCol = '';
 // 1. Manejo de Pestañas (Tabs)
 const tabTitles = {
     'tab-dashboard': { title: 'Conexión con WhatsApp', subtitle: 'Vincular tu cuenta de WhatsApp Business o Personal' },
-    'tab-leads': { title: 'Cargar Leads', subtitle: 'Importar números y nombres desde Excel, Sheets o CSV' },
+    'tab-leads': { title: 'Leads de Evento', subtitle: 'Importar y configurar tus plantillas de mensajes para la campaña' },
     'tab-setters': { title: 'Confirmaciones de Setters', subtitle: 'Filtrar citas confirmadas y cargar mensajes de asistencia' },
-    'tab-template': { title: 'Plantilla de Mensaje', subtitle: 'Redactar el texto personalizado para el envío' },
     'tab-console': { title: 'Consola de Control', subtitle: 'Supervisar y ejecutar la campaña de envío' }
 };
 
@@ -746,14 +749,14 @@ btnStartCampaign.addEventListener('click', () => {
 
     const template = templateTextArea.value.trim();
     if (!template) {
-        alert('Por favor redacta la plantilla de mensaje en la pestaña "Plantilla" antes de iniciar.');
-        // Cambiar a pestaña plantilla
-        document.getElementById('btn-tab-template').click();
+        alert('Por favor redacta la plantilla de mensaje en la pestaña "Leads Evento" antes de iniciar.');
+        // Cambiar a pestaña Leads Evento
+        document.getElementById('btn-tab-leads').click();
         return;
     }
 
     if (!selectedPhoneCol) {
-        alert('Debe mapear una columna de teléfono en la pestaña "Cargar Leads".');
+        alert('Debe mapear una columna de teléfono en la pestaña "Leads Evento".');
         document.getElementById('btn-tab-leads').click();
         return;
     }
@@ -1744,17 +1747,17 @@ if (savedTemplates.length === 0) {
 }
 
 function populateTemplateSelectors() {
-    if (!selectSavedTemplate || !selectSetterTemplate) return;
+    if (!selectEventTemplate || !selectSetterTemplate) return;
 
     // Limpiar dropdowns
-    selectSavedTemplate.innerHTML = '<option value="">-- Seleccionar Plantilla Guardada --</option>';
+    selectEventTemplate.innerHTML = '<option value="">-- Seleccionar Plantilla Guardada --</option>';
     selectSetterTemplate.innerHTML = '<option value="">-- Seleccionar Plantilla Guardada --</option>';
 
     savedTemplates.forEach(tpl => {
         const opt1 = document.createElement('option');
         opt1.value = tpl.id;
         opt1.textContent = tpl.name;
-        selectSavedTemplate.appendChild(opt1);
+        selectEventTemplate.appendChild(opt1);
 
         const opt2 = document.createElement('option');
         opt2.value = tpl.id;
@@ -1763,16 +1766,16 @@ function populateTemplateSelectors() {
     });
 }
 
-// Cargar plantilla cuando cambia el dropdown principal
-if (selectSavedTemplate) {
-    selectSavedTemplate.addEventListener('change', () => {
-        const tplId = selectSavedTemplate.value;
+// Cargar plantilla cuando cambia el dropdown principal (Evento)
+if (selectEventTemplate) {
+    selectEventTemplate.addEventListener('change', () => {
+        const tplId = selectEventTemplate.value;
         if (!tplId) return;
 
         const tpl = savedTemplates.find(t => t.id === tplId);
         if (tpl) {
             templateTextArea.value = tpl.text;
-            templateNameInput.value = tpl.name;
+            eventTemplateNameInput.value = tpl.name;
             updatePreview();
         }
     });
@@ -1792,10 +1795,10 @@ if (selectSetterTemplate) {
     });
 }
 
-// Guardar plantilla principal
-if (btnSaveTemplate) {
-    btnSaveTemplate.addEventListener('click', () => {
-        const name = templateNameInput.value.trim();
+// Guardar plantilla principal (Evento)
+if (btnSaveEventTemplate) {
+    btnSaveEventTemplate.addEventListener('click', () => {
+        const name = eventTemplateNameInput.value.trim();
         const text = templateTextArea.value.trim();
 
         if (!name) {
@@ -1807,7 +1810,7 @@ if (btnSaveTemplate) {
             return;
         }
 
-        saveOrUpdateTemplate(name, text);
+        saveOrUpdateTemplate(name, text, true);
     });
 }
 
@@ -1826,11 +1829,11 @@ if (btnSaveSetterTemplate) {
             return;
         }
 
-        saveOrUpdateTemplate(name, text);
+        saveOrUpdateTemplate(name, text, false);
     });
 }
 
-function saveOrUpdateTemplate(name, text) {
+function saveOrUpdateTemplate(name, text, isEvent) {
     // Buscar si ya existe una plantilla con este nombre
     const existingIndex = savedTemplates.findIndex(t => t.name.toLowerCase() === name.toLowerCase());
 
@@ -1857,15 +1860,15 @@ function saveOrUpdateTemplate(name, text) {
     // Seleccionar la plantilla guardada en ambos dropdowns
     const updatedTpl = savedTemplates.find(t => t.name.toLowerCase() === name.toLowerCase());
     if (updatedTpl) {
-        if (selectSavedTemplate) selectSavedTemplate.value = updatedTpl.id;
+        if (selectEventTemplate) selectEventTemplate.value = updatedTpl.id;
         if (selectSetterTemplate) selectSetterTemplate.value = updatedTpl.id;
     }
 }
 
-// Borrar plantilla principal
-if (btnDeleteTemplate) {
-    btnDeleteTemplate.addEventListener('click', () => {
-        const tplId = selectSavedTemplate.value;
+// Borrar plantilla principal (Evento)
+if (btnDeleteEventTemplate) {
+    btnDeleteEventTemplate.addEventListener('click', () => {
+        const tplId = selectEventTemplate.value;
         if (!tplId) {
             alert('Por favor selecciona una plantilla guardada de la lista para eliminar.');
             return;
@@ -1880,12 +1883,61 @@ if (btnDeleteTemplate) {
             populateTemplateSelectors();
             
             // Limpiar campos
-            templateNameInput.value = '';
+            eventTemplateNameInput.value = '';
             templateTextArea.value = '';
-            if (selectSavedTemplate) selectSavedTemplate.value = '';
+            if (selectEventTemplate) selectEventTemplate.value = '';
             updatePreview();
             
             alert('Plantilla eliminada correctamente.');
         }
+    });
+}
+
+// Cargar Leads de Evento en la Consola
+if (btnLoadLeadsToConsole) {
+    btnLoadLeadsToConsole.addEventListener('click', () => {
+        if (parsedRows.length === 0) {
+            alert("No hay leads cargados para procesar.");
+            return;
+        }
+
+        const template = templateTextArea.value.trim();
+        if (!template) {
+            alert("Por favor escribe la plantilla de mensaje.");
+            return;
+        }
+
+        if (!confirm(`¿Deseas cargar estos ${parsedRows.length} leads de evento en la consola de envío?`)) {
+            return;
+        }
+
+        // Armar campaña
+        campaignData = {
+            status: 'STOPPED',
+            index: 0,
+            total: parsedRows.length,
+            queue: parsedRows.map((row, index) => {
+                const phone = row[selectedPhoneCol];
+                const name = selectedNameCol ? row[selectedNameCol] : 'Contacto';
+                const compiledMsg = compileTemplate(template, row);
+
+                return {
+                    id: index + 1,
+                    name: name,
+                    phone: phone,
+                    status: 'pending',
+                    text: compiledMsg
+                };
+            })
+        };
+
+        // Renderizar consola
+        updateConsoleUI();
+        updateConsoleButtonsState();
+
+        // Mover a la pestaña de consola
+        document.getElementById('btn-tab-console').click();
+
+        alert(`¡Campaña cargada con éxito! ${parsedRows.length} mensajes personalizados listos en la Consola.`);
     });
 }

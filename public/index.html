@@ -32,13 +32,10 @@
                     <i class="fas fa-qrcode"></i> <span>Conexión QR</span>
                 </button>
                 <button class="nav-btn" data-tab="tab-leads" id="btn-tab-leads">
-                    <i class="fas fa-users"></i> <span>Cargar Leads</span>
+                    <i class="fas fa-users"></i> <span>Leads Evento</span>
                 </button>
                 <button class="nav-btn" data-tab="tab-setters" id="btn-tab-setters">
                     <i class="fas fa-user-check"></i> <span>Confirmar Setters</span>
-                </button>
-                <button class="nav-btn" data-tab="tab-template" id="btn-tab-template">
-                    <i class="fas fa-envelope-open-text"></i> <span>Plantilla</span>
                 </button>
                 <button class="nav-btn" data-tab="tab-console" id="btn-tab-console">
                     <i class="fas fa-paper-plane"></i> <span>Consola de Envío</span>
@@ -180,127 +177,189 @@
 
             <!-- Tab: Leads / Import -->
             <section class="tab-content hidden" id="tab-leads">
-                <div class="grid-layout vertical">
-                    <!-- Sincronización Automática Card (Leads) -->
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <h3>Sincronizar directamente con Google Sheets & Calendar</h3>
-                            <span class="badge badge-success">Sincronización Directa</span>
-                        </div>
-                        <div class="card-body">
-                            <p class="section-description">Configura el enlace de tu Apps Script Web App para traer automáticamente los leads de tu Google Calendar, filtrados por fecha y color en tiempo real.</p>
-                            
-                            <div class="api-sync-grid mb-3">
-                                <div class="input-field-inline grow">
-                                    <label for="leads-sync-web-app-url">URL de Apps Script Web App:</label>
-                                    <input type="text" id="leads-sync-web-app-url" class="form-control grow" placeholder="https://script.google.com/macros/s/.../exec">
+                <div class="grid-layout">
+                    <!-- Main Card Container (Left Column) -->
+                    <div class="main-card-container" style="display: flex; flex-direction: column; gap: 20px; width: 100%;">
+                        <!-- Sincronización Automática Card (Leads) -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Sincronizar directamente con Google Sheets & Calendar</h3>
+                                <span class="badge badge-success">Sincronización Directa</span>
+                            </div>
+                            <div class="card-body">
+                                <p class="section-description">Configura el enlace de tu Apps Script Web App para traer automáticamente los leads de tu Google Calendar, filtrados por fecha y color en tiempo real.</p>
+                                
+                                <div class="api-sync-grid mb-3">
+                                    <div class="input-field-inline grow">
+                                        <label for="leads-sync-web-app-url">URL de Apps Script Web App:</label>
+                                        <input type="text" id="leads-sync-web-app-url" class="form-control grow" placeholder="https://script.google.com/macros/s/.../exec">
+                                    </div>
+                                    <div class="input-field-inline" style="width: 250px;">
+                                        <label for="leads-sync-security-token">Token de Seguridad:</label>
+                                        <input type="password" id="leads-sync-security-token" class="form-control" placeholder="Clave de seguridad..." style="width: 100%;">
+                                    </div>
                                 </div>
-                                <div class="input-field-inline" style="width: 250px;">
-                                    <label for="leads-sync-security-token">Token de Seguridad:</label>
-                                    <input type="password" id="leads-sync-security-token" class="form-control" placeholder="Clave de seguridad..." style="width: 100%;">
+                                
+                                <div class="column-mapping-bar" style="align-items: flex-end;">
+                                    <div class="mapping-item">
+                                        <label for="leads-sync-start-date">Fecha Inicio:</label>
+                                        <input type="date" id="leads-sync-start-date" class="form-control">
+                                    </div>
+                                    <div class="mapping-item">
+                                        <label for="leads-sync-end-date">Fecha Fin:</label>
+                                        <input type="date" id="leads-sync-end-date" class="form-control">
+                                    </div>
+                                    <div class="mapping-item">
+                                        <label for="leads-sync-color-id">Color del Evento:</label>
+                                        <select id="leads-sync-color-id" class="form-select">
+                                            <option value="all" selected>Todos los colores (Sin filtrar)</option>
+                                            <option value="1">1 = Azul claro (Pale Blue)</option>
+                                            <option value="2">2 = Verde claro (Pale Green)</option>
+                                            <option value="3">3 = Morado (Mauve)</option>
+                                            <option value="4">4 = Rosa (Pale Red)</option>
+                                            <option value="5">5 = Amarillo (Yellow)</option>
+                                            <option value="6">6 = Naranja (Orange)</option>
+                                            <option value="7">7 = Turquesa (Cyan)</option>
+                                            <option value="8">8 = Gris (Gray)</option>
+                                            <option value="9">9 = Azul oscuro (Blue)</option>
+                                            <option value="10">10 = Verde oscuro (Green)</option>
+                                            <option value="11">11 = Rojo (Red)</option>
+                                        </select>
+                                    </div>
+                                    <div class="mapping-item" style="flex-grow: 0;">
+                                        <button class="btn btn-primary" id="btn-sync-leads-campaign" style="white-space: nowrap; height: 42px;">
+                                            <i class="fas fa-sync-alt"></i> Sincronizar Leads
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                            
-                            <div class="column-mapping-bar" style="align-items: flex-end;">
-                                <div class="mapping-item">
-                                    <label for="leads-sync-start-date">Fecha Inicio:</label>
-                                    <input type="date" id="leads-sync-start-date" class="form-control">
+                        </div>
+
+                        <!-- Manual Import Card -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Importar Datos de Leads</h3>
+                                <span class="badge badge-info">Paso 2</span>
+                            </div>
+                            <div class="card-body">
+                                <p class="section-description">Copia tus columnas directamente desde Excel o Google Sheets (por ejemplo, seleccionando las celdas y pulsando Ctrl+C) y pégalas en el recuadro inferior. Asegúrate de incluir la primera fila con los encabezados (ej: Nombre, Teléfono).</p>
+                                
+                                <div class="input-group">
+                                    <textarea id="leads-paste-area" placeholder="Ejemplo para pegar:&#10;Nombre	Telefono&#10;Juan Perez	5491122334455&#10;Maria Lopez	34600112233"></textarea>
                                 </div>
-                                <div class="mapping-item">
-                                    <label for="leads-sync-end-date">Fecha Fin:</label>
-                                    <input type="date" id="leads-sync-end-date" class="form-control">
+                                
+                                <div class="flex-actions justify-between mt-3">
+                                    <div>
+                                        <label class="btn btn-secondary btn-file">
+                                            <i class="fas fa-file-csv"></i> Subir Archivo CSV <input type="file" id="csv-file-input" accept=".csv" class="hidden">
+                                        </label>
+                                        <button class="btn btn-link text-muted" id="btn-clear-leads">Limpiar todo</button>
+                                    </div>
+                                    <button class="btn btn-primary" id="btn-process-leads">
+                                        <i class="fas fa-magic"></i> Procesar y Analizar Datos
+                                    </button>
                                 </div>
-                                <div class="mapping-item">
-                                    <label for="leads-sync-color-id">Color del Evento:</label>
-                                    <select id="leads-sync-color-id" class="form-select">
-                                        <option value="all" selected>Todos los colores (Sin filtrar)</option>
-                                        <option value="1">1 = Azul claro (Pale Blue)</option>
-                                        <option value="2">2 = Verde claro (Pale Green)</option>
-                                        <option value="3">3 = Morado (Mauve)</option>
-                                        <option value="4">4 = Rosa (Pale Red)</option>
-                                        <option value="5">5 = Amarillo (Yellow)</option>
-                                        <option value="6">6 = Naranja (Orange)</option>
-                                        <option value="7">7 = Turquesa (Cyan)</option>
-                                        <option value="8">8 = Gris (Gray)</option>
-                                        <option value="9">9 = Azul oscuro (Blue)</option>
-                                        <option value="10">10 = Verde oscuro (Green)</option>
-                                        <option value="11">11 = Rojo (Red)</option>
-                                    </select>
+                            </div>
+                        </div>
+
+                        <!-- Column Selector & Preview Card (appears after processing) -->
+                        <div class="card hidden" id="card-leads-preview">
+                            <div class="card-header">
+                                <h3>Configurar Campos y Vista Previa</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="column-mapping-bar">
+                                    <div class="mapping-item">
+                                        <label for="select-phone-col">Columna de Teléfono (WhatsApp):</label>
+                                        <select id="select-phone-col" class="form-select"></select>
+                                    </div>
+                                    <div class="mapping-item">
+                                        <label for="select-name-col">Columna de Nombre (Opcional):</label>
+                                        <select id="select-name-col" class="form-select"></select>
+                                    </div>
                                 </div>
-                                <div class="mapping-item" style="flex-grow: 0;">
-                                    <button class="btn btn-primary" id="btn-sync-leads-campaign" style="white-space: nowrap; height: 42px;">
-                                        <i class="fas fa-sync-alt"></i> Sincronizar Leads
+
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i> Los números deben contener el código de país (ej. 54 para Argentina, 34 para España) y no contener espacios ni símbolos. El sistema los limpiará automáticamente de caracteres no numéricos al enviar.
+                                </div>
+
+                                <div class="leads-table-container">
+                                    <table class="leads-table" id="leads-table">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Nombre Mapeado</th>
+                                                <th>Teléfono Mapeado</th>
+                                                <th>Columnas Adicionales</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="leads-table-body">
+                                            <!-- Leads populated dynamically -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <!-- Template for Leads Evento -->
+                                <div class="setter-template-box mt-4">
+                                    <h4 class="mb-2">Plantilla del Mensaje de Evento</h4>
+                                    
+                                    <div class="template-manager-bar mb-3">
+                                        <div class="input-field-inline grow">
+                                            <label for="select-event-template">Cargar Plantilla:</label>
+                                            <select id="select-event-template" class="form-select grow"></select>
+                                        </div>
+                                        <div class="flex-actions">
+                                            <input type="text" id="event-template-name-input" class="form-control" placeholder="Nombre..." style="width: 150px;">
+                                            <button class="btn btn-success btn-sm" id="btn-save-event-template" style="height: 38px;">
+                                                <i class="fas fa-save"></i> Guardar
+                                            </button>
+                                            <button class="btn btn-danger btn-sm" id="btn-delete-event-template" style="height: 38px;" title="Eliminar plantilla seleccionada">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="variable-buttons-container mb-2" id="event-variable-buttons">
+                                        <!-- Dynamic variable buttons -->
+                                    </div>
+                                    <div class="input-group">
+                                        <textarea id="event-template-text-area" class="template-editor" rows="5" placeholder="Hola {Nombre}, ¿cómo estás? Te escribo de parte de nuestra empresa para confirmar tu agenda."></textarea>
+                                    </div>
+                                </div>
+
+                                <div class="flex-actions justify-between mt-3">
+                                    <span id="leads-count-text" class="font-semibold text-emerald">0 leads cargados encontrados.</span>
+                                    <button class="btn btn-primary" id="btn-load-leads-to-console">
+                                        <i class="fas fa-paper-plane"></i> Cargar en Consola de Envío
                                     </button>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="card">
-                        <div class="card-header">
-                            <h3>Importar Datos de Leads</h3>
-                            <span class="badge badge-info">Paso 2</span>
-                        </div>
-                        <div class="card-body">
-                            <p class="section-description">Copia tus columnas directamente desde Excel o Google Sheets (por ejemplo, seleccionando las celdas y pulsando Ctrl+C) y pégalas en el recuadro inferior. Asegúrate de incluir la primera fila con los encabezados (ej: Nombre, Teléfono).</p>
-                            
-                            <div class="input-group">
-                                <textarea id="leads-paste-area" placeholder="Ejemplo para pegar:&#10;Nombre	Telefono&#10;Juan Perez	5491122334455&#10;Maria Lopez	34600112233"></textarea>
+                    <!-- Sidebar Area with Real-time Preview (Right Column) -->
+                    <div class="sidebar-area" style="width: 340px; display: flex; flex-direction: column; gap: 20px;">
+                        <div class="card sidebar-card preview-card">
+                            <div class="card-header">
+                                <h3>Vista Previa en Tiempo Real</h3>
                             </div>
-                            
-                            <div class="flex-actions justify-between mt-3">
-                                <div>
-                                    <label class="btn btn-secondary btn-file">
-                                        <i class="fas fa-file-csv"></i> Subir Archivo CSV <input type="file" id="csv-file-input" accept=".csv" class="hidden">
-                                    </label>
-                                    <button class="btn btn-link text-muted" id="btn-clear-leads">Limpiar todo</button>
+                            <div class="card-body">
+                                <div class="whatsapp-chat-preview">
+                                    <div class="chat-header">
+                                        <div class="chat-avatar">
+                                            <i class="fas fa-user-circle"></i>
+                                        </div>
+                                        <div class="chat-user-info">
+                                            <h5 id="preview-contact-name">Lead de Prueba</h5>
+                                            <span>En línea</span>
+                                        </div>
+                                    </div>
+                                    <div class="chat-messages-container">
+                                        <div class="chat-bubble received">
+                                            <p id="chat-preview-text">Escribe tu plantilla para ver una vista previa personalizada aquí.</p>
+                                            <span class="bubble-time">14:32</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <button class="btn btn-primary" id="btn-process-leads">
-                                    <i class="fas fa-magic"></i> Procesar y Analizar Datos
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Column Selector & Preview Card (appears after processing) -->
-                    <div class="card hidden" id="card-leads-preview">
-                        <div class="card-header">
-                            <h3>Configurar Campos y Vista Previa</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="column-mapping-bar">
-                                <div class="mapping-item">
-                                    <label for="select-phone-col">Columna de Teléfono (WhatsApp):</label>
-                                    <select id="select-phone-col" class="form-select"></select>
-                                </div>
-                                <div class="mapping-item">
-                                    <label for="select-name-col">Columna de Nombre (Opcional):</label>
-                                    <select id="select-name-col" class="form-select"></select>
-                                </div>
-                            </div>
-
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle"></i> Los números deben contener el código de país (ej. 54 para Argentina, 34 para España) y no contener espacios ni símbolos. El sistema los limpiará automáticamente de caracteres no numéricos al enviar.
-                            </div>
-
-                            <div class="leads-table-container">
-                                <table class="leads-table" id="leads-table">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Nombre Mapeado</th>
-                                            <th>Teléfono Mapeado</th>
-                                            <th>Columnas Adicionales</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="leads-table-body">
-                                        <!-- Leads populated dynamically -->
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <div class="leads-summary mt-3">
-                                <span id="leads-count-text">0 leads cargados listos para enviar.</span>
                             </div>
                         </div>
                     </div>
@@ -481,73 +540,6 @@
                                 <button class="btn btn-primary" id="btn-load-setters-to-console">
                                     <i class="fas fa-paper-plane"></i> Cargar en Consola de Envío
                                 </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Tab: Template -->
-            <section class="tab-content hidden" id="tab-template">
-                <div class="grid-layout">
-                    <div class="card main-card">
-                        <div class="card-header">
-                            <h3>Redactar Plantilla del Mensaje</h3>
-                            <span class="badge badge-info">Paso 3</span>
-                        </div>
-                        <div class="card-body">
-                             <p class="section-description">Escribe el mensaje que quieres enviar. Puedes insertar variables utilizando llaves `{}`, que coincidan con las columnas cargadas. Por ejemplo: `{Nombre}` o `{Telefono}`.</p>
-                             
-                             <!-- Template Manager Bar -->
-                             <div class="template-manager-bar mb-3">
-                                 <div class="input-field-inline grow">
-                                     <label for="select-saved-template">Plantillas Guardadas:</label>
-                                     <select id="select-saved-template" class="form-select grow"></select>
-                                 </div>
-                                 <div class="flex-actions">
-                                     <input type="text" id="template-name-input" class="form-control" placeholder="Nombre de plantilla..." style="width: 200px;">
-                                     <button class="btn btn-success btn-sm" id="btn-save-template" style="height: 38px;">
-                                         <i class="fas fa-save"></i> Guardar
-                                     </button>
-                                     <button class="btn btn-danger btn-sm" id="btn-delete-template" style="height: 38px;" title="Eliminar plantilla seleccionada">
-                                         <i class="fas fa-trash-alt"></i>
-                                     </button>
-                                 </div>
-                             </div>
-                            
-                            <div class="variable-buttons-container mb-2" id="variable-buttons">
-                                <span class="text-muted text-sm">Insertar variable:</span>
-                                <!-- Dynamic variable buttons -->
-                                <button class="btn btn-tag" data-var="{Nombre}">{Nombre}</button>
-                            </div>
-                            
-                            <div class="input-group">
-                                <textarea id="template-text-area" class="template-editor" rows="10" placeholder="Hola {Nombre}, ¿cómo estás? Te escribo de parte de nuestra empresa para confirmar tu agenda. Visita este link: http://mi-web.com/agenda"></textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card sidebar-card preview-card">
-                        <div class="card-header">
-                            <h3>Vista Previa en Tiempo Real</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="whatsapp-chat-preview">
-                                <div class="chat-header">
-                                    <div class="chat-avatar">
-                                        <i class="fas fa-user-circle"></i>
-                                    </div>
-                                    <div class="chat-user-info">
-                                        <h5 id="preview-contact-name">Lead de Prueba</h5>
-                                        <span>En línea</span>
-                                    </div>
-                                </div>
-                                <div class="chat-messages-container">
-                                    <div class="chat-bubble received">
-                                        <p id="chat-preview-text">Escribe tu plantilla para ver una vista previa personalizada aquí.</p>
-                                        <span class="bubble-time">14:32</span>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
