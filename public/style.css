@@ -1045,4 +1045,32 @@ textarea#leads-paste-area {
     background-color: rgba(255, 255, 255, 0.08);
 }
 
+/* Gestor de Plantillas & Sync */
+.template-manager-bar {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    background-color: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.api-sync-grid {
+    display: flex;
+    gap: 20px;
+    background-color: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.grow {
+    flex-grow: 1;
+}
+
+.input-field-inline.grow input {
+    width: 100%;
+}
+
 

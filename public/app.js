@@ -81,6 +81,23 @@ const setterVariableButtons = document.getElementById('setter-variable-buttons')
 const settersCountText = document.getElementById('setters-count-text');
 const btnLoadSettersToConsole = document.getElementById('btn-load-setters-to-console');
 
+// Elementos de la interfaz - Sincronización Automática API
+const syncWebAppUrl = document.getElementById('sync-web-app-url');
+const syncSecurityToken = document.getElementById('sync-security-token');
+const syncStartDate = document.getElementById('sync-start-date');
+const syncEndDate = document.getElementById('sync-end-date');
+const syncColorId = document.getElementById('sync-color-id');
+const btnSyncLeads = document.getElementById('btn-sync-leads');
+
+// Elementos de la interfaz - Gestor de Plantillas (Principal y Setters)
+const selectSavedTemplate = document.getElementById('select-saved-template');
+const templateNameInput = document.getElementById('template-name-input');
+const btnSaveTemplate = document.getElementById('btn-save-template');
+const btnDeleteTemplate = document.getElementById('btn-delete-template');
+const selectSetterTemplate = document.getElementById('select-setter-template');
+const setterTemplateNameInput = document.getElementById('setter-template-name-input');
+const btnSaveSetterTemplate = document.getElementById('btn-save-setter-template');
+
 // Datos en memoria en el Frontend
 let parsedHeaders = [];
 let parsedRows = []; // array de objetos con las celdas
@@ -1464,6 +1481,298 @@ if (btnClearSentHistory) {
         if (confirm('¿Estás seguro de que deseas limpiar el historial de mensajes enviados? Esto permitirá volver a enviar mensajes a leads que ya habían sido procesados.')) {
             localStorage.removeItem('sent_leads_history');
             alert('Historial de envíos limpiado correctamente.');
+        }
+    });
+}
+
+// Inicializar configuraciones y plantillas al cargar el DOM
+document.addEventListener('DOMContentLoaded', () => {
+    // Sincronización API - Cargar valores guardados
+    if (syncWebAppUrl) {
+        syncWebAppUrl.value = localStorage.getItem('sync_web_app_url') || '';
+    }
+    if (syncSecurityToken) {
+        syncSecurityToken.value = localStorage.getItem('sync_security_token') || '';
+    }
+    
+    // Configurar fechas por defecto a "hoy" en Argentina (según zona horaria del sistema)
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+    
+    if (syncStartDate) syncStartDate.value = todayStr;
+    if (syncEndDate) syncEndDate.value = todayStr;
+
+    // Inicializar selectores de plantillas
+    populateTemplateSelectors();
+});
+
+// Lógica de Sincronización Directa de Leads desde Google Web App
+if (btnSyncLeads) {
+    btnSyncLeads.addEventListener('click', async () => {
+        const url = syncWebAppUrl.value.trim();
+        const token = syncSecurityToken.value.trim();
+        const startDate = syncStartDate.value;
+        const endDate = syncEndDate.value;
+        const color = syncColorId.value;
+
+        if (!url) {
+            alert('Por favor introduce la URL de tu Apps Script Web App.');
+            return;
+        }
+
+        if (!startDate || !endDate) {
+            alert('Por favor selecciona las fechas de inicio y fin para la búsqueda.');
+            return;
+        }
+
+        // Deshabilitar botón y mostrar carga
+        btnSyncLeads.disabled = true;
+        const originalText = btnSyncLeads.innerHTML;
+        btnSyncLeads.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...';
+
+        try {
+            // Guardar configuración en localStorage
+            localStorage.setItem('sync_web_app_url', url);
+            localStorage.setItem('sync_security_token', token);
+
+            // Construir URL con parámetros
+            const queryUrl = `${url}?startDate=${startDate}&endDate=${endDate}&color=${color}&token=${encodeURIComponent(token)}`;
+            
+            console.log(`Realizando petición de sincronización a: ${queryUrl}`);
+            const response = await fetch(queryUrl, { redirect: 'follow' });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            if (data.error) {
+                alert(`Error devuelto por Apps Script: ${data.error}`);
+                return;
+            }
+
+            if (!Array.isArray(data) || data.length === 0) {
+                alert('No se encontraron leads confirmados en el calendario para las fechas y color seleccionados.');
+                return;
+            }
+
+            // Procesar los datos recibidos
+            // Las columnas devueltas por el Apps Script son:
+            // Nombre, Telefono, Pais, Fecha Original (ARG), Fecha Local (Cliente), Hora Local (Cliente), Link
+            setterParsedHeaders = ["Nombre", "Telefono", "Pais", "Fecha Original (ARG)", "Fecha Local (Cliente)", "Hora Local (Cliente)", "Link"];
+            
+            // Convertir la lista de objetos de vuelta a objetos indexados por cabecera
+            setterParsedRows = data.map(item => {
+                return {
+                    "Nombre": item.nombre || item.Nombre || '',
+                    "Telefono": item.telefono || item.Telefono || '',
+                    "Pais": item.pais || item.Pais || '',
+                    "Fecha Original (ARG)": item.fechaOriginal || item.fechaOriginalArg || item["Fecha Original (ARG)"] || '',
+                    "Fecha Local (Cliente)": item.fechaLocal || item["Fecha Local (Cliente)"] || '',
+                    "Hora Local (Cliente)": item.horaLocal || item["Hora Local (Cliente)"] || '',
+                    "Link": item.link || item.Link || ''
+                };
+            });
+
+            // Actualizar selectores en la interfaz de Setters
+            populateSetterColumnSelectors();
+
+            // Auto-mapear las columnas ya que los nombres coinciden exactamente
+            selectedSetterPhoneCol = 'Telefono';
+            selectedSetterNameCol = 'Nombre';
+            selectedSetterDateCol = 'Fecha Local (Cliente)';
+            selectedSetterTimeCol = 'Hora Local (Cliente)';
+            selectedSetterLinkCol = 'Link';
+            selectedSetterCountryCol = 'Pais';
+
+            // Actualizar selectores a los valores mapeados
+            selectSetterPhone.value = 'Telefono';
+            selectSetterName.value = 'Nombre';
+            selectSetterDate.value = 'Fecha Local (Cliente)';
+            selectSetterTime.value = 'Hora Local (Cliente)';
+            selectSetterLink.value = 'Link';
+            selectSetterCountry.value = 'Pais';
+
+            // Mostrar tarjeta de previsualización y renderizar tabla
+            cardSettersPreview.classList.remove('hidden');
+            renderSettersPreviewTable();
+            
+            alert(`Sincronización completada. Se importaron ${setterParsedRows.length} leads confirmados desde tu Calendario.`);
+        } catch (error) {
+            console.error('Error sincronizando calendario:', error);
+            alert(`No se pudo realizar la sincronización. Verifica la URL de tu Web App y tu conexión de internet. Detalle: ${error.message}`);
+        } finally {
+            btnSyncLeads.disabled = false;
+            btnSyncLeads.innerHTML = originalText;
+        }
+    });
+}
+
+// --- GESTIÓN DE PLANTILLAS PERSISTENTES ---
+let savedTemplates = [];
+try {
+    savedTemplates = JSON.parse(localStorage.getItem('saved_message_templates') || '[]');
+} catch (e) {
+    savedTemplates = [];
+}
+
+// Si la lista de plantillas está vacía, agregar una por defecto
+if (savedTemplates.length === 0) {
+    savedTemplates.push({
+        id: 'tpl-default-1',
+        name: 'Confirmación General',
+        text: 'Hola {Nombre}, confirmamos tu sesión para el {FechaLocal} a las {HoraLocal}. ¿Contamos con tu asistencia? Link del meet: {Link}'
+    });
+    localStorage.setItem('saved_message_templates', JSON.stringify(savedTemplates));
+}
+
+function populateTemplateSelectors() {
+    if (!selectSavedTemplate || !selectSetterTemplate) return;
+
+    // Limpiar dropdowns
+    selectSavedTemplate.innerHTML = '<option value="">-- Seleccionar Plantilla Guardada --</option>';
+    selectSetterTemplate.innerHTML = '<option value="">-- Seleccionar Plantilla Guardada --</option>';
+
+    savedTemplates.forEach(tpl => {
+        const opt1 = document.createElement('option');
+        opt1.value = tpl.id;
+        opt1.textContent = tpl.name;
+        selectSavedTemplate.appendChild(opt1);
+
+        const opt2 = document.createElement('option');
+        opt2.value = tpl.id;
+        opt2.textContent = tpl.name;
+        selectSetterTemplate.appendChild(opt2);
+    });
+}
+
+// Cargar plantilla cuando cambia el dropdown principal
+if (selectSavedTemplate) {
+    selectSavedTemplate.addEventListener('change', () => {
+        const tplId = selectSavedTemplate.value;
+        if (!tplId) return;
+
+        const tpl = savedTemplates.find(t => t.id === tplId);
+        if (tpl) {
+            templateTextArea.value = tpl.text;
+            templateNameInput.value = tpl.name;
+            updatePreview();
+        }
+    });
+}
+
+// Cargar plantilla cuando cambia el dropdown de setters
+if (selectSetterTemplate) {
+    selectSetterTemplate.addEventListener('change', () => {
+        const tplId = selectSetterTemplate.value;
+        if (!tplId) return;
+
+        const tpl = savedTemplates.find(t => t.id === tplId);
+        if (tpl) {
+            setterTemplateTextArea.value = tpl.text;
+            setterTemplateNameInput.value = tpl.name;
+        }
+    });
+}
+
+// Guardar plantilla principal
+if (btnSaveTemplate) {
+    btnSaveTemplate.addEventListener('click', () => {
+        const name = templateNameInput.value.trim();
+        const text = templateTextArea.value.trim();
+
+        if (!name) {
+            alert('Por favor introduce un nombre para la plantilla.');
+            return;
+        }
+        if (!text) {
+            alert('Por favor escribe el contenido del mensaje antes de guardar.');
+            return;
+        }
+
+        saveOrUpdateTemplate(name, text);
+    });
+}
+
+// Guardar plantilla desde Setters
+if (btnSaveSetterTemplate) {
+    btnSaveSetterTemplate.addEventListener('click', () => {
+        const name = setterTemplateNameInput.value.trim();
+        const text = setterTemplateTextArea.value.trim();
+
+        if (!name) {
+            alert('Por favor introduce un nombre para la plantilla.');
+            return;
+        }
+        if (!text) {
+            alert('Por favor escribe el contenido de la plantilla antes de guardar.');
+            return;
+        }
+
+        saveOrUpdateTemplate(name, text);
+    });
+}
+
+function saveOrUpdateTemplate(name, text) {
+    // Buscar si ya existe una plantilla con este nombre
+    const existingIndex = savedTemplates.findIndex(t => t.name.toLowerCase() === name.toLowerCase());
+
+    if (existingIndex !== -1) {
+        if (confirm(`Ya existe una plantilla llamada "${name}". ¿Deseas sobrescribirla?`)) {
+            savedTemplates[existingIndex].text = text;
+            alert('Plantilla actualizada con éxito.');
+        } else {
+            return;
+        }
+    } else {
+        const newTpl = {
+            id: 'tpl-' + Date.now(),
+            name: name,
+            text: text
+        };
+        savedTemplates.push(newTpl);
+        alert('Plantilla guardada con éxito.');
+    }
+
+    localStorage.setItem('saved_message_templates', JSON.stringify(savedTemplates));
+    populateTemplateSelectors();
+
+    // Seleccionar la plantilla guardada en ambos dropdowns
+    const updatedTpl = savedTemplates.find(t => t.name.toLowerCase() === name.toLowerCase());
+    if (updatedTpl) {
+        if (selectSavedTemplate) selectSavedTemplate.value = updatedTpl.id;
+        if (selectSetterTemplate) selectSetterTemplate.value = updatedTpl.id;
+    }
+}
+
+// Borrar plantilla principal
+if (btnDeleteTemplate) {
+    btnDeleteTemplate.addEventListener('click', () => {
+        const tplId = selectSavedTemplate.value;
+        if (!tplId) {
+            alert('Por favor selecciona una plantilla guardada de la lista para eliminar.');
+            return;
+        }
+
+        const tpl = savedTemplates.find(t => t.id === tplId);
+        if (!tpl) return;
+
+        if (confirm(`¿Estás seguro de que deseas eliminar la plantilla "${tpl.name}"?`)) {
+            savedTemplates = savedTemplates.filter(t => t.id !== tplId);
+            localStorage.setItem('saved_message_templates', JSON.stringify(savedTemplates));
+            populateTemplateSelectors();
+            
+            // Limpiar campos
+            templateNameInput.value = '';
+            templateTextArea.value = '';
+            if (selectSavedTemplate) selectSavedTemplate.value = '';
+            updatePreview();
+            
+            alert('Plantilla eliminada correctamente.');
         }
     });
 }

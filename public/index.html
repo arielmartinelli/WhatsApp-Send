@@ -255,6 +255,60 @@
             <!-- Tab: Setters / Confirmations -->
             <section class="tab-content hidden" id="tab-setters">
                 <div class="grid-layout vertical">
+                    <!-- Sincronización Automática Card -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3>Sincronizar directamente con Google Sheets & Calendar</h3>
+                            <span class="badge badge-success">Sincronización Directa</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="section-description">Configura el enlace de tu Apps Script Web App para traer automáticamente los leads confirmados de tu Google Calendar, filtrados por fecha y color en tiempo real.</p>
+                            
+                            <div class="api-sync-grid mb-3">
+                                <div class="input-field-inline grow">
+                                    <label for="sync-web-app-url">URL de Apps Script Web App:</label>
+                                    <input type="text" id="sync-web-app-url" class="form-control grow" placeholder="https://script.google.com/macros/s/.../exec">
+                                </div>
+                                <div class="input-field-inline" style="width: 250px;">
+                                    <label for="sync-security-token">Token de Seguridad:</label>
+                                    <input type="password" id="sync-security-token" class="form-control" placeholder="Clave de seguridad..." style="width: 100%;">
+                                </div>
+                            </div>
+                            
+                            <div class="column-mapping-bar" style="align-items: flex-end;">
+                                <div class="mapping-item">
+                                    <label for="sync-start-date">Fecha Inicio:</label>
+                                    <input type="date" id="sync-start-date" class="form-control">
+                                </div>
+                                <div class="mapping-item">
+                                    <label for="sync-end-date">Fecha Fin:</label>
+                                    <input type="date" id="sync-end-date" class="form-control">
+                                </div>
+                                <div class="mapping-item">
+                                    <label for="sync-color-id">Color del Evento:</label>
+                                    <select id="sync-color-id" class="form-select">
+                                        <option value="1">1 = Azul claro (Pale Blue)</option>
+                                        <option value="2" selected>2 = Verde claro (Pale Green)</option>
+                                        <option value="3">3 = Morado (Mauve)</option>
+                                        <option value="4">4 = Rosa (Pale Red)</option>
+                                        <option value="5">5 = Amarillo (Yellow)</option>
+                                        <option value="6">6 = Naranja (Orange)</option>
+                                        <option value="7">7 = Turquesa (Cyan)</option>
+                                        <option value="8">8 = Gris (Gray)</option>
+                                        <option value="9">9 = Azul oscuro (Blue)</option>
+                                        <option value="10">10 = Verde oscuro (Green)</option>
+                                        <option value="11">11 = Rojo (Red)</option>
+                                    </select>
+                                </div>
+                                <div class="mapping-item" style="flex-grow: 0;">
+                                    <button class="btn btn-primary" id="btn-sync-leads" style="white-space: nowrap; height: 42px;">
+                                        <i class="fas fa-sync-alt"></i> Sincronizar Leads
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="card">
                         <div class="card-header">
                             <h3>Confirmación de Asistencia (Setters)</h3>
@@ -341,8 +395,21 @@
                             </div>
                             
                             <!-- Template for Setters -->
-                            <div class="setter-template-box mt-4">
-                                <h4 class="mb-2">Plantilla del Mensaje de Confirmación</h4>
+                             <div class="setter-template-box mt-4">
+                                 <h4 class="mb-2">Plantilla del Mensaje de Confirmación</h4>
+                                 
+                                 <div class="template-manager-bar mb-3">
+                                     <div class="input-field-inline grow">
+                                         <label for="select-setter-template">Cargar Plantilla:</label>
+                                         <select id="select-setter-template" class="form-select grow"></select>
+                                     </div>
+                                     <div class="flex-actions">
+                                         <input type="text" id="setter-template-name-input" class="form-control" placeholder="Nombre..." style="width: 150px;">
+                                         <button class="btn btn-success btn-sm" id="btn-save-setter-template" style="height: 38px;">
+                                             <i class="fas fa-save"></i> Guardar
+                                         </button>
+                                     </div>
+                                 </div>
                                 <div class="variable-buttons-container mb-2" id="setter-variable-buttons">
                                     <span class="text-muted text-sm">Insertar variable:</span>
                                     <button class="btn btn-tag" data-var="{Nombre}">{Nombre}</button>
@@ -374,7 +441,24 @@
                             <span class="badge badge-info">Paso 3</span>
                         </div>
                         <div class="card-body">
-                            <p class="section-description">Escribe el mensaje que quieres enviar. Puedes insertar variables utilizando llaves `{}`, que coincidan con las columnas cargadas. Por ejemplo: `{Nombre}` o `{Telefono}`.</p>
+                             <p class="section-description">Escribe el mensaje que quieres enviar. Puedes insertar variables utilizando llaves `{}`, que coincidan con las columnas cargadas. Por ejemplo: `{Nombre}` o `{Telefono}`.</p>
+                             
+                             <!-- Template Manager Bar -->
+                             <div class="template-manager-bar mb-3">
+                                 <div class="input-field-inline grow">
+                                     <label for="select-saved-template">Plantillas Guardadas:</label>
+                                     <select id="select-saved-template" class="form-select grow"></select>
+                                 </div>
+                                 <div class="flex-actions">
+                                     <input type="text" id="template-name-input" class="form-control" placeholder="Nombre de plantilla..." style="width: 200px;">
+                                     <button class="btn btn-success btn-sm" id="btn-save-template" style="height: 38px;">
+                                         <i class="fas fa-save"></i> Guardar
+                                     </button>
+                                     <button class="btn btn-danger btn-sm" id="btn-delete-template" style="height: 38px;" title="Eliminar plantilla seleccionada">
+                                         <i class="fas fa-trash-alt"></i>
+                                     </button>
+                                 </div>
+                             </div>
                             
                             <div class="variable-buttons-container mb-2" id="variable-buttons">
                                 <span class="text-muted text-sm">Insertar variable:</span>
