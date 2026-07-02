@@ -81,13 +81,20 @@ const setterVariableButtons = document.getElementById('setter-variable-buttons')
 const settersCountText = document.getElementById('setters-count-text');
 const btnLoadSettersToConsole = document.getElementById('btn-load-setters-to-console');
 
-// Elementos de la interfaz - Sincronización Automática API
+// Elementos de la interfaz - Sincronización Automática API (Setters y Leads)
 const syncWebAppUrl = document.getElementById('sync-web-app-url');
 const syncSecurityToken = document.getElementById('sync-security-token');
 const syncStartDate = document.getElementById('sync-start-date');
 const syncEndDate = document.getElementById('sync-end-date');
 const syncColorId = document.getElementById('sync-color-id');
 const btnSyncLeads = document.getElementById('btn-sync-leads');
+
+const leadsSyncWebAppUrl = document.getElementById('leads-sync-web-app-url');
+const leadsSyncSecurityToken = document.getElementById('leads-sync-security-token');
+const leadsSyncStartDate = document.getElementById('leads-sync-start-date');
+const leadsSyncEndDate = document.getElementById('leads-sync-end-date');
+const leadsSyncColorId = document.getElementById('leads-sync-color-id');
+const btnSyncLeadsCampaign = document.getElementById('btn-sync-leads-campaign');
 
 // Elementos de la interfaz - Gestor de Plantillas (Principal y Setters)
 const selectSavedTemplate = document.getElementById('select-saved-template');
@@ -1487,12 +1494,20 @@ if (btnClearSentHistory) {
 
 // Inicializar configuraciones y plantillas al cargar el DOM
 document.addEventListener('DOMContentLoaded', () => {
-    // Sincronización API - Cargar valores guardados
+    // Sincronización API - Cargar valores guardados (Setters)
     if (syncWebAppUrl) {
         syncWebAppUrl.value = localStorage.getItem('sync_web_app_url') || '';
     }
     if (syncSecurityToken) {
         syncSecurityToken.value = localStorage.getItem('sync_security_token') || '';
+    }
+
+    // Sincronización API - Cargar valores guardados (Leads Campaña)
+    if (leadsSyncWebAppUrl) {
+        leadsSyncWebAppUrl.value = localStorage.getItem('leads_sync_web_app_url') || '';
+    }
+    if (leadsSyncSecurityToken) {
+        leadsSyncSecurityToken.value = localStorage.getItem('leads_sync_security_token') || '';
     }
     
     // Configurar fechas por defecto a "hoy" en Argentina (según zona horaria del sistema)
@@ -1504,6 +1519,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (syncStartDate) syncStartDate.value = todayStr;
     if (syncEndDate) syncEndDate.value = todayStr;
+
+    if (leadsSyncStartDate) leadsSyncStartDate.value = todayStr;
+    if (leadsSyncEndDate) leadsSyncEndDate.value = todayStr;
 
     // Inicializar selectores de plantillas
     populateTemplateSelectors();
@@ -1608,6 +1626,101 @@ if (btnSyncLeads) {
         } finally {
             btnSyncLeads.disabled = false;
             btnSyncLeads.innerHTML = originalText;
+        }
+    });
+}
+
+// Lógica de Sincronización Directa de Leads de Campaña desde Google Web App
+if (btnSyncLeadsCampaign) {
+    btnSyncLeadsCampaign.addEventListener('click', async () => {
+        const url = leadsSyncWebAppUrl.value.trim();
+        const token = leadsSyncSecurityToken.value.trim();
+        const startDate = leadsSyncStartDate.value;
+        const endDate = leadsSyncEndDate.value;
+        const color = leadsSyncColorId.value;
+
+        if (!url) {
+            alert('Por favor introduce la URL de tu Apps Script Web App.');
+            return;
+        }
+
+        if (!startDate || !endDate) {
+            alert('Por favor selecciona las fechas de inicio y fin para la búsqueda.');
+            return;
+        }
+
+        // Deshabilitar botón y mostrar carga
+        btnSyncLeadsCampaign.disabled = true;
+        const originalText = btnSyncLeadsCampaign.innerHTML;
+        btnSyncLeadsCampaign.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...';
+
+        try {
+            // Guardar configuración en localStorage
+            localStorage.setItem('leads_sync_web_app_url', url);
+            localStorage.setItem('leads_sync_security_token', token);
+
+            // Construir URL con parámetros, especificando type=leads
+            const queryUrl = `${url}?startDate=${startDate}&endDate=${endDate}&color=${color}&token=${encodeURIComponent(token)}&type=leads`;
+            
+            console.log(`Realizando petición de sincronización de campaña a: ${queryUrl}`);
+            const response = await fetch(queryUrl, { redirect: 'follow' });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            if (data.error) {
+                alert(`Error devuelto por Apps Script: ${data.error}`);
+                return;
+            }
+
+            if (!Array.isArray(data) || data.length === 0) {
+                alert('No se encontraron leads en el calendario para las fechas y color seleccionados.');
+                return;
+            }
+
+            // Procesar los datos recibidos
+            parsedHeaders = ["Nombre", "Telefono", "Pais", "Fecha Original (ARG)", "Fecha Local (Cliente)", "Hora Local (Cliente)", "Link"];
+            
+            parsedRows = data.map(item => {
+                return {
+                    "Nombre": item.nombre || item.Nombre || '',
+                    "Telefono": item.telefono || item.Telefono || '',
+                    "Pais": item.pais || item.Pais || '',
+                    "Fecha Original (ARG)": item.fechaOriginal || item.fechaOriginalArg || item["Fecha Original (ARG)"] || '',
+                    "Fecha Local (Cliente)": item.fechaLocal || item["Fecha Local (Cliente)"] || '',
+                    "Hora Local (Cliente)": item.horaLocal || item["Hora Local (Cliente)"] || '',
+                    "Link": item.link || item.Link || ''
+                };
+            });
+
+            // Actualizar selectores en la interfaz de Leads
+            populateColumnSelectors();
+
+            // Auto-mapear
+            selectedPhoneCol = 'Telefono';
+            selectedNameCol = 'Nombre';
+            selectPhoneCol.value = 'Telefono';
+            selectNameCol.value = 'Nombre';
+
+            // Mostrar tarjeta de previsualización y renderizar tabla
+            cardLeadsPreview.classList.remove('hidden');
+            renderLeadsPreviewTable();
+            updateVariableButtons();
+            updateConsoleButtonsState();
+            
+            // Auto-scroll
+            cardLeadsPreview.scrollIntoView({ behavior: 'smooth' });
+
+            alert(`Sincronización completada. Se importaron ${parsedRows.length} leads desde tu Calendario.`);
+        } catch (error) {
+            console.error('Error sincronizando calendario:', error);
+            alert(`No se pudo realizar la sincronización. Verifica la URL de tu Web App y tu conexión de internet. Detalle: ${error.message}`);
+        } finally {
+            btnSyncLeadsCampaign.disabled = false;
+            btnSyncLeadsCampaign.innerHTML = originalText;
         }
     });
 }

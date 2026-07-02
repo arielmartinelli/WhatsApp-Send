@@ -181,6 +181,61 @@
             <!-- Tab: Leads / Import -->
             <section class="tab-content hidden" id="tab-leads">
                 <div class="grid-layout vertical">
+                    <!-- Sincronización Automática Card (Leads) -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3>Sincronizar directamente con Google Sheets & Calendar</h3>
+                            <span class="badge badge-success">Sincronización Directa</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="section-description">Configura el enlace de tu Apps Script Web App para traer automáticamente los leads de tu Google Calendar, filtrados por fecha y color en tiempo real.</p>
+                            
+                            <div class="api-sync-grid mb-3">
+                                <div class="input-field-inline grow">
+                                    <label for="leads-sync-web-app-url">URL de Apps Script Web App:</label>
+                                    <input type="text" id="leads-sync-web-app-url" class="form-control grow" placeholder="https://script.google.com/macros/s/.../exec">
+                                </div>
+                                <div class="input-field-inline" style="width: 250px;">
+                                    <label for="leads-sync-security-token">Token de Seguridad:</label>
+                                    <input type="password" id="leads-sync-security-token" class="form-control" placeholder="Clave de seguridad..." style="width: 100%;">
+                                </div>
+                            </div>
+                            
+                            <div class="column-mapping-bar" style="align-items: flex-end;">
+                                <div class="mapping-item">
+                                    <label for="leads-sync-start-date">Fecha Inicio:</label>
+                                    <input type="date" id="leads-sync-start-date" class="form-control">
+                                </div>
+                                <div class="mapping-item">
+                                    <label for="leads-sync-end-date">Fecha Fin:</label>
+                                    <input type="date" id="leads-sync-end-date" class="form-control">
+                                </div>
+                                <div class="mapping-item">
+                                    <label for="leads-sync-color-id">Color del Evento:</label>
+                                    <select id="leads-sync-color-id" class="form-select">
+                                        <option value="all" selected>Todos los colores (Sin filtrar)</option>
+                                        <option value="1">1 = Azul claro (Pale Blue)</option>
+                                        <option value="2">2 = Verde claro (Pale Green)</option>
+                                        <option value="3">3 = Morado (Mauve)</option>
+                                        <option value="4">4 = Rosa (Pale Red)</option>
+                                        <option value="5">5 = Amarillo (Yellow)</option>
+                                        <option value="6">6 = Naranja (Orange)</option>
+                                        <option value="7">7 = Turquesa (Cyan)</option>
+                                        <option value="8">8 = Gris (Gray)</option>
+                                        <option value="9">9 = Azul oscuro (Blue)</option>
+                                        <option value="10">10 = Verde oscuro (Green)</option>
+                                        <option value="11">11 = Rojo (Red)</option>
+                                    </select>
+                                </div>
+                                <div class="mapping-item" style="flex-grow: 0;">
+                                    <button class="btn btn-primary" id="btn-sync-leads-campaign" style="white-space: nowrap; height: 42px;">
+                                        <i class="fas fa-sync-alt"></i> Sincronizar Leads
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="card">
                         <div class="card-header">
                             <h3>Importar Datos de Leads</h3>
