@@ -57,6 +57,7 @@ const campaignProgressNumbers = document.getElementById('campaign-progress-numbe
 const campaignProgressPercent = document.getElementById('campaign-progress-percent');
 const consoleTableBody = document.getElementById('console-table-body');
 const btnExportReport = document.getElementById('btn-export-report');
+const btnClearSentHistory = document.getElementById('btn-clear-sent-history');
 const batchEnabledCheckbox = document.getElementById('batch-enabled');
 const batchSizeInput = document.getElementById('batch-size');
 const batchDelayInput = document.getElementById('batch-delay');
@@ -545,6 +546,9 @@ socket.on('message-status', (data) => {
         if (lead) {
             lead.status = data.status;
             lead.error = data.error;
+            if (data.status === 'sent') {
+                addToSentHistory(lead.phone, lead.text);
+            }
         }
     }
 });
@@ -735,22 +739,50 @@ btnStartCampaign.addEventListener('click', () => {
     const batchSize = batchEnabled ? (parseInt(batchSizeInput.value) || 20) : 999999;
     const batchDelay = batchEnabled ? ((parseInt(batchDelayInput.value) || 5) * 60) : 0; // en segundos
 
-    // Construir la cola de leads
-    const leadsToSend = parsedRows.map((row, index) => {
+    // Cargar historial para filtrar duplicados
+    let history = [];
+    try {
+        history = JSON.parse(localStorage.getItem('sent_leads_history') || '[]');
+    } catch (e) {
+        history = [];
+    }
+
+    const filteredLeads = [];
+    let duplicateCount = 0;
+
+    parsedRows.forEach((row) => {
         const phone = row[selectedPhoneCol];
         const name = selectedNameCol ? row[selectedNameCol] : '';
         const compiledMsg = compileTemplate(template, row);
+        const cleanPhone = phone ? phone.replace(/\D/g, '') : '';
 
-        return {
-            id: index + 1,
-            name: name,
-            phone: phone,
-            text: compiledMsg
-        };
+        const isAlreadySent = history.some(h => h.phone === cleanPhone && h.text === compiledMsg);
+
+        if (isAlreadySent) {
+            duplicateCount++;
+        } else {
+            filteredLeads.push({
+                id: filteredLeads.length + 1,
+                name: name,
+                phone: phone,
+                text: compiledMsg
+            });
+        }
     });
 
+    if (filteredLeads.length === 0) {
+        alert('Todos los contactos de la lista ya recibieron exactamente este mismo mensaje anteriormente.');
+        return;
+    }
+
+    if (duplicateCount > 0) {
+        if (!confirm(`Se detectaron ${duplicateCount} contactos que ya recibieron este mismo mensaje. ¿Deseas omitirlos y enviar solo a los ${filteredLeads.length} nuevos?`)) {
+            return;
+        }
+    }
+
     socket.emit('start-campaign', {
-        leads: leadsToSend,
+        leads: filteredLeads,
         delays: { min: minDelay, max: maxDelay },
         batchSize: batchSize,
         batchDelay: batchDelay
@@ -1305,16 +1337,6 @@ if (btnLoadSettersToConsole) {
             return;
         }
 
-        // Armamos parsedRows globales
-        parsedRows = setterParsedRows.map(row => {
-            return { ...row };
-        });
-
-        // Configurar los selectores y cabeceras globales
-        parsedHeaders = [...setterParsedHeaders];
-        selectedPhoneCol = selectedSetterPhoneCol;
-        selectedNameCol = selectedSetterNameCol;
-
         // Traducimos las variables locales del confirmador a las columnas reales
         let globalTemplate = template;
         if (selectedSetterNameCol) {
@@ -1332,6 +1354,50 @@ if (btnLoadSettersToConsole) {
         if (selectedSetterCountryCol) {
             globalTemplate = globalTemplate.replace(/{Pais}/g, `{${selectedSetterCountryCol}}`);
         }
+
+        // Cargar historial para filtrar duplicados
+        let history = [];
+        try {
+            history = JSON.parse(localStorage.getItem('sent_leads_history') || '[]');
+        } catch (e) {
+            history = [];
+        }
+
+        const filteredRows = [];
+        let duplicateCount = 0;
+
+        setterParsedRows.forEach(row => {
+            const phone = row[selectedSetterPhoneCol];
+            const cleanPhone = phone ? phone.replace(/\D/g, '') : '';
+            const compiledMsg = compileTemplate(globalTemplate, row);
+
+            const isAlreadySent = history.some(h => h.phone === cleanPhone && h.text === compiledMsg);
+
+            if (isAlreadySent) {
+                duplicateCount++;
+            } else {
+                filteredRows.push(row);
+            }
+        });
+
+        if (filteredRows.length === 0) {
+            alert(`Todos los ${setterParsedRows.length} leads ya recibieron este mensaje anteriormente. No se cargará ningún lead.`);
+            return;
+        }
+
+        if (duplicateCount > 0) {
+            alert(`Se omitieron ${duplicateCount} leads porque ya se les había enviado este mensaje anteriormente. Se cargarán los ${filteredRows.length} leads restantes.`);
+        }
+
+        // Armamos parsedRows globales con los filtrados
+        parsedRows = filteredRows.map(row => {
+            return { ...row };
+        });
+
+        // Configurar los selectores y cabeceras globales
+        parsedHeaders = [...setterParsedHeaders];
+        selectedPhoneCol = selectedSetterPhoneCol;
+        selectedNameCol = selectedSetterNameCol;
 
         // Cargar plantilla global
         templateTextArea.value = globalTemplate;
@@ -1364,5 +1430,40 @@ if (btnLoadSettersToConsole) {
         document.getElementById('btn-tab-console').click();
 
         alert(`¡Campaña cargada con éxito! ${parsedRows.length} mensajes personalizados listos en la Consola.`);
+    });
+}
+
+// Historial de Envíos y Safeguards
+function addToSentHistory(phone, text) {
+    if (!phone) return;
+    let history = [];
+    try {
+        history = JSON.parse(localStorage.getItem('sent_leads_history') || '[]');
+    } catch (e) {
+        history = [];
+    }
+    const cleanPhone = phone.replace(/\D/g, '');
+    const record = {
+        phone: cleanPhone,
+        text: text,
+        timestamp: Date.now()
+    };
+    const exists = history.some(h => h.phone === cleanPhone && h.text === text);
+    if (!exists) {
+        history.push(record);
+        if (history.length > 2000) {
+            history.shift(); // Evitar que el localStorage crezca indefinidamente
+        }
+        localStorage.setItem('sent_leads_history', JSON.stringify(history));
+    }
+}
+
+// Botón de Limpiar Historial de Enviados
+if (btnClearSentHistory) {
+    btnClearSentHistory.addEventListener('click', () => {
+        if (confirm('¿Estás seguro de que deseas limpiar el historial de mensajes enviados? Esto permitirá volver a enviar mensajes a leads que ya habían sido procesados.')) {
+            localStorage.removeItem('sent_leads_history');
+            alert('Historial de envíos limpiado correctamente.');
+        }
     });
 }
