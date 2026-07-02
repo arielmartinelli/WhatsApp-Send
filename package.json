@@ -29,6 +29,11 @@
         "portable"
       ]
     },
+    "mac": {
+      "target": [
+        "dmg"
+      ]
+    },
     "files": [
       "public/**/*",
       "server.js",
