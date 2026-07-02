@@ -496,19 +496,37 @@ function updatePreview() {
     const previewName = selectedNameCol ? firstRow[selectedNameCol] : 'Lead de Prueba';
     previewContactName.textContent = previewName;
 
+    // Traducir variables mapeadas para la vista previa
+    let compiledTemplate = template;
+    if (selectedNameCol) {
+        compiledTemplate = compiledTemplate.replace(/{Nombre}/gi, `{${selectedNameCol}}`);
+    }
+    if (selectedPhoneCol) {
+        compiledTemplate = compiledTemplate.replace(/{Telefono}/gi, `{${selectedPhoneCol}}`);
+    }
+
     // Compilar el mensaje
-    const compiled = compileTemplate(template, firstRow);
+    const compiled = compileTemplate(compiledTemplate, firstRow);
     // Convertir saltos de línea a HTML <br>
     chatPreviewText.innerHTML = compiled.replace(/\n/g, '<br>');
 }
 
 function compileTemplate(template, row) {
+    if (!row) return template;
     let result = template;
-    parsedHeaders.forEach(header => {
-        const value = row[header] || '';
-        // Reemplazar globalmente las llaves {Header}
-        const regex = new RegExp(`{${escapeRegExp(header)}}`, 'g');
+    // Iterar por las llaves reales del objeto fila
+    Object.keys(row).forEach(key => {
+        const value = row[key] || '';
+        // Reemplazo exacto
+        let regex = new RegExp(`{${escapeRegExp(key)}}`, 'g');
         result = result.replace(regex, value);
+        
+        // Reemplazo insensible para variables comunes (nombre, telefono, pais, link, etc.)
+        const cleanKey = key.toLowerCase().replace(/\s/g, '');
+        if (['nombre', 'telefono', 'pais', 'link', 'fechalocal', 'horalocal', 'fechaoriginal(arg)', 'fechalocal(cliente)', 'horalocal(cliente)'].includes(cleanKey)) {
+            let regexCI = new RegExp(`{${escapeRegExp(key)}}`, 'gi');
+            result = result.replace(regexCI, value);
+        }
     });
     return result;
 }
@@ -1926,6 +1944,15 @@ if (btnLoadLeadsToConsole) {
             return;
         }
 
+        // Traducimos las variables genéricas {Nombre} y {Telefono} al nombre de columna real mapeado
+        let globalTemplate = template;
+        if (selectedNameCol) {
+            globalTemplate = globalTemplate.replace(/{Nombre}/gi, `{${selectedNameCol}}`);
+        }
+        if (selectedPhoneCol) {
+            globalTemplate = globalTemplate.replace(/{Telefono}/gi, `{${selectedPhoneCol}}`);
+        }
+
         // Armar campaña
         campaignData = {
             status: 'STOPPED',
@@ -1934,7 +1961,7 @@ if (btnLoadLeadsToConsole) {
             queue: parsedRows.map((row, index) => {
                 const phone = row[selectedPhoneCol];
                 const name = selectedNameCol ? row[selectedNameCol] : 'Contacto';
-                const compiledMsg = compileTemplate(template, row);
+                const compiledMsg = compileTemplate(globalTemplate, row);
 
                 return {
                     id: index + 1,
