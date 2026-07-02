@@ -426,10 +426,23 @@ function renderLeadsPreviewTable() {
         tdExtra.innerHTML = extraFields.join(' | ') || '<span class="text-muted">Ninguno</span>';
         tr.appendChild(tdExtra);
 
+        // Borrar fila
+        const tdActions = document.createElement('td');
+        const btnDel = document.createElement('button');
+        btnDel.className = 'btn btn-danger btn-sm';
+        btnDel.innerHTML = '<i class="fas fa-trash-alt"></i>';
+        btnDel.onclick = () => {
+            parsedRows.splice(idx, 1);
+            renderLeadsPreviewTable();
+            updatePreview();
+        };
+        tdActions.appendChild(btnDel);
+        tr.appendChild(tdActions);
+
         leadsTableBody.appendChild(tr);
     });
 
-    leadsCountText.textContent = `${parsedRows.length} leads cargados listos para enviar.`;
+    leadsCountText.textContent = `${parsedRows.length} leads cargados encontrados.`;
 }
 
 // 4. Lógica de Variables y Plantilla
