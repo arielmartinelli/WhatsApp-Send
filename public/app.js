@@ -962,10 +962,10 @@ if (btnClearSentHistory) {
 document.addEventListener('DOMContentLoaded', () => {
     // Sincronización API - Cargar valores guardados (Leads Campaña)
     if (leadsSyncWebAppUrl) {
-        leadsSyncWebAppUrl.value = localStorage.getItem('leads_sync_web_app_url') || '';
+        leadsSyncWebAppUrl.value = localStorage.getItem('leads_sync_web_app_url') || localStorage.getItem('sync_web_app_url') || '';
     }
     if (leadsSyncSecurityToken) {
-        leadsSyncSecurityToken.value = localStorage.getItem('leads_sync_security_token') || '';
+        leadsSyncSecurityToken.value = localStorage.getItem('leads_sync_security_token') || localStorage.getItem('sync_security_token') || '';
     }
     
     // Configurar fechas por defecto a "hoy"
