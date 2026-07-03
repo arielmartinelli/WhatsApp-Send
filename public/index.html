@@ -32,10 +32,7 @@
                     <i class="fas fa-qrcode"></i> <span>Conexión QR</span>
                 </button>
                 <button class="nav-btn" data-tab="tab-leads" id="btn-tab-leads">
-                    <i class="fas fa-users"></i> <span>Leads Evento</span>
-                </button>
-                <button class="nav-btn" data-tab="tab-setters" id="btn-tab-setters">
-                    <i class="fas fa-user-check"></i> <span>Confirmar Setters</span>
+                    <i class="fas fa-magic"></i> <span>Generar Mensaje</span>
                 </button>
                 <button class="nav-btn" data-tab="tab-console" id="btn-tab-console">
                     <i class="fas fa-paper-plane"></i> <span>Consola de Envío</span>
@@ -212,18 +209,18 @@
                                     <div class="mapping-item">
                                         <label for="leads-sync-color-id">Color del Evento:</label>
                                         <select id="leads-sync-color-id" class="form-select">
-                                            <option value="all" selected>Todos los colores (Sin filtrar)</option>
-                                            <option value="1">1 = Azul claro (Pale Blue)</option>
-                                            <option value="2">2 = Verde claro (Pale Green)</option>
-                                            <option value="3">3 = Morado (Mauve)</option>
-                                            <option value="4">4 = Rosa (Pale Red)</option>
-                                            <option value="5">5 = Amarillo (Yellow)</option>
-                                            <option value="6">6 = Naranja (Orange)</option>
-                                            <option value="7">7 = Turquesa (Cyan)</option>
-                                            <option value="8">8 = Gris (Gray)</option>
-                                            <option value="9">9 = Azul oscuro (Blue)</option>
-                                            <option value="10">10 = Verde oscuro (Green)</option>
-                                            <option value="11">11 = Rojo (Red)</option>
+                                            <option value="all" selected>🌈 Todos los colores (Sin filtrar)</option>
+                                            <option value="4">🔴 Salmón</option>
+                                            <option value="11">🔴 Rojo</option>
+                                            <option value="6">🟠 Naranja</option>
+                                            <option value="5">🟡 Amarillo</option>
+                                            <option value="10">🟢 Verde oscuro</option>
+                                            <option value="2">🟢 Verde claro</option>
+                                            <option value="1">🔵 Azul claro</option>
+                                            <option value="7">🔵 Turquesa</option>
+                                            <option value="9">🔵 Azul oscuro</option>
+                                            <option value="3">🟣 Morado</option>
+                                            <option value="8">⚫ Gris</option>
                                         </select>
                                     </div>
                                     <div class="mapping-item" style="flex-grow: 0;">
@@ -367,185 +364,6 @@
                 </div>
             </section>
 
-            <!-- Tab: Setters / Confirmations -->
-            <section class="tab-content hidden" id="tab-setters">
-                <div class="grid-layout vertical">
-                    <!-- Sincronización Automática Card -->
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <h3>Sincronizar directamente con Google Sheets & Calendar</h3>
-                            <span class="badge badge-success">Sincronización Directa</span>
-                        </div>
-                        <div class="card-body">
-                            <p class="section-description">Configura el enlace de tu Apps Script Web App para traer automáticamente los leads confirmados de tu Google Calendar, filtrados por fecha y color en tiempo real.</p>
-                            
-                            <div class="api-sync-grid mb-3">
-                                <div class="input-field-inline grow">
-                                    <label for="sync-web-app-url">URL de Apps Script Web App:</label>
-                                    <input type="text" id="sync-web-app-url" class="form-control grow" placeholder="https://script.google.com/macros/s/.../exec">
-                                </div>
-                                <div class="input-field-inline" style="width: 250px;">
-                                    <label for="sync-security-token">Token de Seguridad:</label>
-                                    <input type="password" id="sync-security-token" class="form-control" placeholder="Clave de seguridad..." style="width: 100%;">
-                                </div>
-                            </div>
-                            
-                            <div class="column-mapping-bar" style="align-items: flex-end;">
-                                <div class="mapping-item">
-                                    <label for="sync-start-date">Fecha Inicio:</label>
-                                    <input type="date" id="sync-start-date" class="form-control">
-                                </div>
-                                <div class="mapping-item">
-                                    <label for="sync-end-date">Fecha Fin:</label>
-                                    <input type="date" id="sync-end-date" class="form-control">
-                                </div>
-                                <div class="mapping-item">
-                                    <label for="sync-color-id">Color del Evento:</label>
-                                    <select id="sync-color-id" class="form-select">
-                                        <option value="1">1 = Azul claro (Pale Blue)</option>
-                                        <option value="2" selected>2 = Verde claro (Pale Green)</option>
-                                        <option value="3">3 = Morado (Mauve)</option>
-                                        <option value="4">4 = Rosa (Pale Red)</option>
-                                        <option value="5">5 = Amarillo (Yellow)</option>
-                                        <option value="6">6 = Naranja (Orange)</option>
-                                        <option value="7">7 = Turquesa (Cyan)</option>
-                                        <option value="8">8 = Gris (Gray)</option>
-                                        <option value="9">9 = Azul oscuro (Blue)</option>
-                                        <option value="10">10 = Verde oscuro (Green)</option>
-                                        <option value="11">11 = Rojo (Red)</option>
-                                    </select>
-                                </div>
-                                <div class="mapping-item" style="flex-grow: 0;">
-                                    <button class="btn btn-primary" id="btn-sync-leads" style="white-space: nowrap; height: 42px;">
-                                        <i class="fas fa-sync-alt"></i> Sincronizar Leads
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-header">
-                            <h3>Confirmación de Asistencia (Setters)</h3>
-                            <span class="badge badge-info">Filtro Verde</span>
-                        </div>
-                        <div class="card-body">
-                            <p class="section-description">Copia las celdas directamente desde tu Google Sheet (asegúrate de incluir la primera fila con títulos como Nombre, Telefono, Fecha Local, Hora Local). El sistema filtrará <b>únicamente los contactos resaltados en verde claro</b>.</p>
-                            
-                            <!-- Paste container for HTML color detection -->
-                            <div class="paste-zone-wrapper">
-                                <div id="setters-paste-zone" class="paste-zone" contenteditable="true">
-                                    <div class="paste-zone-placeholder">
-                                        <i class="fas fa-clipboard-list"></i>
-                                        <p>Haz clic aquí y presiona <b>Ctrl+V</b> para pegar las celdas del Sheet</p>
-                                        <p class="text-xs text-muted mt-2">o arrastra tu archivo CSV aquí</p>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="flex-actions justify-between mt-3 items-center">
-                                <div>
-                                    <label for="csv-file-setter" class="btn btn-outline btn-sm" style="cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 13px;">
-                                        <i class="fas fa-file-import"></i> O subir archivo CSV
-                                    </label>
-                                    <input type="file" id="csv-file-setter" accept=".csv" style="display: none;">
-                                    <span id="csv-setter-filename" class="text-xs text-muted ml-2"></span>
-                                </div>
-                                <button class="btn btn-link text-muted" id="btn-clear-setters">Limpiar datos</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Filtered Setter Leads Card -->
-                    <div class="card hidden" id="card-setters-preview">
-                        <div class="card-header">
-                            <h3>Leads Confirmados (Filtrados)</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="column-mapping-bar">
-                                <div class="mapping-item">
-                                    <label for="select-setter-phone">Columna de Teléfono:</label>
-                                    <select id="select-setter-phone" class="form-select"></select>
-                                </div>
-                                <div class="mapping-item">
-                                    <label for="select-setter-name">Columna de Nombre:</label>
-                                    <select id="select-setter-name" class="form-select"></select>
-                                </div>
-                                <div class="mapping-item">
-                                    <label for="select-setter-date">Columna de Fecha Local:</label>
-                                    <select id="select-setter-date" class="form-select"></select>
-                                </div>
-                                <div class="mapping-item">
-                                    <label for="select-setter-time">Columna de Hora Local:</label>
-                                    <select id="select-setter-time" class="form-select"></select>
-                                </div>
-                                <div class="mapping-item">
-                                    <label for="select-setter-link">Columna de Link:</label>
-                                    <select id="select-setter-link" class="form-select"></select>
-                                </div>
-                                <div class="mapping-item">
-                                    <label for="select-setter-country">Columna de País:</label>
-                                    <select id="select-setter-country" class="form-select"></select>
-                                </div>
-                            </div>
-
-                            <div class="leads-table-container">
-                                <table class="leads-table" id="setters-table">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Nombre</th>
-                                            <th>Teléfono</th>
-                                            <th>País</th>
-                                            <th>Fecha Local</th>
-                                            <th>Hora Local</th>
-                                            <th>Link</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="setters-table-body">
-                                        <!-- Filtered rows injected here -->
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <!-- Template for Setters -->
-                             <div class="setter-template-box mt-4">
-                                 <h4 class="mb-2">Plantilla del Mensaje de Confirmación</h4>
-                                 
-                                 <div class="template-manager-bar mb-3">
-                                     <div class="input-field-inline grow">
-                                         <label for="select-setter-template">Cargar Plantilla:</label>
-                                         <select id="select-setter-template" class="form-select grow"></select>
-                                     </div>
-                                     <div class="flex-actions">
-                                         <input type="text" id="setter-template-name-input" class="form-control" placeholder="Nombre..." style="width: 150px;">
-                                         <button class="btn btn-success btn-sm" id="btn-save-setter-template" style="height: 38px;">
-                                             <i class="fas fa-save"></i> Guardar
-                                         </button>
-                                     </div>
-                                 </div>
-                                <div class="variable-buttons-container mb-2" id="setter-variable-buttons">
-                                    <span class="text-muted text-sm">Insertar variable:</span>
-                                    <button class="btn btn-tag" data-var="{Nombre}">{Nombre}</button>
-                                    <button class="btn btn-tag" data-var="{FechaLocal}">{FechaLocal}</button>
-                                    <button class="btn btn-tag" data-var="{HoraLocal}">{HoraLocal}</button>
-                                </div>
-                                <div class="input-group">
-                                    <textarea id="setter-template-text-area" class="template-editor" rows="5" placeholder="Hola {Nombre}, confirmamos tu sesión para el {FechaLocal} a las {HoraLocal}. ¿Contamos con tu asistencia?"></textarea>
-                                </div>
-                            </div>
-
-                            <div class="flex-actions justify-between mt-3">
-                                <span id="setters-count-text" class="font-semibold text-emerald">0 leads confirmados encontrados.</span>
-                                <button class="btn btn-primary" id="btn-load-setters-to-console">
-                                    <i class="fas fa-paper-plane"></i> Cargar en Consola de Envío
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
 
             <!-- Tab: Console / Execution -->
             <section class="tab-content hidden" id="tab-console">

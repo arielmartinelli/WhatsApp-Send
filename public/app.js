@@ -63,32 +63,7 @@ const batchSizeInput = document.getElementById('batch-size');
 const batchDelayInput = document.getElementById('batch-delay');
 const batchSettingsFields = document.getElementById('batch-settings-fields');
 
-// Elementos de la interfaz - Setters
-const settersPasteZone = document.getElementById('setters-paste-zone');
-const btnClearSetters = document.getElementById('btn-clear-setters');
-const cardSettersPreview = document.getElementById('card-setters-preview');
-const selectSetterPhone = document.getElementById('select-setter-phone');
-const selectSetterName = document.getElementById('select-setter-name');
-const selectSetterDate = document.getElementById('select-setter-date');
-const selectSetterTime = document.getElementById('select-setter-time');
-const selectSetterLink = document.getElementById('select-setter-link');
-const selectSetterCountry = document.getElementById('select-setter-country');
-const csvFileSetter = document.getElementById('csv-file-setter');
-const csvSetterFilename = document.getElementById('csv-setter-filename');
-const settersTableBody = document.getElementById('setters-table-body');
-const setterTemplateTextArea = document.getElementById('setter-template-text-area');
-const setterVariableButtons = document.getElementById('setter-variable-buttons');
-const settersCountText = document.getElementById('setters-count-text');
-const btnLoadSettersToConsole = document.getElementById('btn-load-setters-to-console');
-
-// Elementos de la interfaz - Sincronización Automática API (Setters y Leads)
-const syncWebAppUrl = document.getElementById('sync-web-app-url');
-const syncSecurityToken = document.getElementById('sync-security-token');
-const syncStartDate = document.getElementById('sync-start-date');
-const syncEndDate = document.getElementById('sync-end-date');
-const syncColorId = document.getElementById('sync-color-id');
-const btnSyncLeads = document.getElementById('btn-sync-leads');
-
+// Elementos de la interfaz - Sincronización Automática API (Leads)
 const leadsSyncWebAppUrl = document.getElementById('leads-sync-web-app-url');
 const leadsSyncSecurityToken = document.getElementById('leads-sync-security-token');
 const leadsSyncStartDate = document.getElementById('leads-sync-start-date');
@@ -96,7 +71,7 @@ const leadsSyncEndDate = document.getElementById('leads-sync-end-date');
 const leadsSyncColorId = document.getElementById('leads-sync-color-id');
 const btnSyncLeadsCampaign = document.getElementById('btn-sync-leads-campaign');
 
-// Elementos de la interfaz - Gestor de Plantillas (Leads Evento y Setters)
+// Elementos de la interfaz - Gestor de Plantillas (Leads Evento)
 const selectEventTemplate = document.getElementById('select-event-template');
 const eventTemplateNameInput = document.getElementById('event-template-name-input');
 const btnSaveEventTemplate = document.getElementById('btn-save-event-template');
@@ -104,10 +79,6 @@ const btnDeleteEventTemplate = document.getElementById('btn-delete-event-templat
 const eventVariableButtons = document.getElementById('event-variable-buttons');
 const eventTemplateTextArea = document.getElementById('event-template-text-area');
 const btnLoadLeadsToConsole = document.getElementById('btn-load-leads-to-console');
-
-const selectSetterTemplate = document.getElementById('select-setter-template');
-const setterTemplateNameInput = document.getElementById('setter-template-name-input');
-const btnSaveSetterTemplate = document.getElementById('btn-save-setter-template');
 
 // Datos en memoria en el Frontend
 let parsedHeaders = [];
@@ -123,21 +94,10 @@ let campaignData = {
     queue: []
 };
 
-// Datos en memoria - Setters
-let setterParsedHeaders = [];
-let setterParsedRows = [];
-let selectedSetterPhoneCol = '';
-let selectedSetterNameCol = '';
-let selectedSetterDateCol = '';
-let selectedSetterTimeCol = '';
-let selectedSetterLinkCol = '';
-let selectedSetterCountryCol = '';
-
 // 1. Manejo de Pestañas (Tabs)
 const tabTitles = {
     'tab-dashboard': { title: 'Conexión con WhatsApp', subtitle: 'Vincular tu cuenta de WhatsApp Business o Personal' },
-    'tab-leads': { title: 'Leads de Evento', subtitle: 'Importar y configurar tus plantillas de mensajes para la campaña' },
-    'tab-setters': { title: 'Confirmaciones de Setters', subtitle: 'Filtrar citas confirmadas y cargar mensajes de asistencia' },
+    'tab-leads': { title: 'Generar Mensaje', subtitle: 'Importar leads de campaña, redactar plantilla y preparar envío' },
     'tab-console': { title: 'Consola de Control', subtitle: 'Supervisar y ejecutar la campaña de envío' }
 };
 
@@ -952,546 +912,6 @@ btnExportReport.addEventListener('click', () => {
     document.body.removeChild(link);
 });
 
-// ==========================================
-// 6. Lógica de Pestaña "Confirmar Setters"
-// ==========================================
-
-// Función para validar si un color es verde claro
-function isLightGreen(colorStr) {
-    if (!colorStr) return false;
-    colorStr = colorStr.toLowerCase().trim();
-
-    // 1. Formato Hexadecimal
-    if (colorStr.startsWith('#')) {
-        let r = 0, g = 0, b = 0;
-        if (colorStr.length === 7) {
-            r = parseInt(colorStr.substring(1, 3), 16);
-            g = parseInt(colorStr.substring(3, 5), 16);
-            b = parseInt(colorStr.substring(5, 7), 16);
-        } else if (colorStr.length === 4) {
-            r = parseInt(colorStr[1] + colorStr[1], 16);
-            g = parseInt(colorStr[2] + colorStr[2], 16);
-            b = parseInt(colorStr[3] + colorStr[3], 16);
-        }
-        return checkGreenRgb(r, g, b);
-    }
-
-    // 2. Formato RGB
-    if (colorStr.startsWith('rgb')) {
-        const matches = colorStr.match(/\d+/g);
-        if (matches && matches.length >= 3) {
-            const r = parseInt(matches[0]);
-            const g = parseInt(matches[1]);
-            const b = parseInt(matches[2]);
-            return checkGreenRgb(r, g, b);
-        }
-    }
-
-    // 3. Nombres de colores
-    const greenNames = ['lightgreen', 'palegreen', 'lime', 'green', 'limegreen', 'springgreen'];
-    return greenNames.some(name => colorStr.includes(name));
-}
-
-function checkGreenRgb(r, g, b) {
-    // Tolerancia para verde claro (ej: #b7e1cd o #d9ead3)
-    return (g > r + 8 && g > b + 8 && g > 120);
-}
-
-// Evento de pegar en la zona de setters
-if (settersPasteZone) {
-    settersPasteZone.addEventListener('paste', (e) => {
-        e.preventDefault();
-        
-        const htmlData = e.clipboardData.getData('text/html');
-        if (!htmlData) {
-            alert("Por favor, copia las celdas directamente desde Google Sheets o Excel para capturar los colores de fondo.");
-            return;
-        }
-
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(htmlData, 'text/html');
-        const rows = doc.querySelectorAll('tr');
-
-        if (rows.length === 0) {
-            alert("No se pudo detectar ninguna fila en las celdas pegadas.");
-            return;
-        }
-
-        const parsedData = [];
-        let headers = [];
-
-        rows.forEach((tr, rowIndex) => {
-            const cells = tr.querySelectorAll('td, th');
-            if (cells.length === 0) return;
-
-            const rowData = [];
-            let isRowConfirmed = false;
-
-            cells.forEach((cell) => {
-                const text = cell.innerText || cell.textContent || '';
-                const cleanText = text.trim();
-                
-                // Buscar color de fondo
-                const bgColor = cell.style.backgroundColor || cell.getAttribute('bgcolor') || '';
-                const isGreen = isLightGreen(bgColor);
-
-                if (isGreen) {
-                    isRowConfirmed = true;
-                }
-
-                rowData.push({
-                    text: cleanText,
-                    isGreen: isGreen
-                });
-            });
-
-            if (rowIndex === 0) {
-                headers = rowData.map(c => c.text || 'Columna');
-            } else {
-                if (isRowConfirmed) {
-                    const rowObj = {};
-                    rowData.forEach((cell, cellIndex) => {
-                        const header = headers[cellIndex] || `Columna_${cellIndex}`;
-                        rowObj[header] = cell.text;
-                    });
-                    parsedData.push(rowObj);
-                }
-            }
-        });
-
-        // Limpiar el contenido del div y colocar un texto de éxito
-        settersPasteZone.innerHTML = `<div class="text-center success-text font-semibold"><i class="fas fa-check-circle"></i> ¡Planilla procesada con éxito! Se encontraron ${parsedData.length} leads confirmados.</div>`;
-
-        if (parsedData.length === 0) {
-            alert("No se encontraron filas resaltadas en verde claro (confirmadas). Asegúrate de que los setters las hayan coloreado.");
-            btnClearSetters.click();
-            return;
-        }
-
-        setterParsedHeaders = headers;
-        setterParsedRows = parsedData;
-
-        populateSetterColumnSelectors();
-        renderSettersPreviewTable();
-        updateSetterVariableButtons();
-        
-        cardSettersPreview.classList.remove('hidden');
-    });
-
-    // Carga de archivo CSV
-    if (csvFileSetter) {
-        csvFileSetter.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            csvSetterFilename.textContent = file.name;
-            
-            const reader = new FileReader();
-            reader.onload = (evt) => {
-                const text = evt.target.result;
-                const parsed = parseCSV(text);
-                
-                if (parsed.rows.length === 0) {
-                    alert("El archivo CSV está vacío o no se pudo procesar.");
-                    return;
-                }
-
-                // Para CSV cargamos todos los datos (el CSV ya viene filtrado desde Calendar)
-                setterParsedHeaders = parsed.headers;
-                setterParsedRows = parsed.rows;
-
-                settersPasteZone.innerHTML = `<div class="text-center success-text font-semibold"><i class="fas fa-check-circle"></i> CSV cargado con éxito: ${file.name} (${parsed.rows.length} confirmados)</div>`;
-
-                populateSetterColumnSelectors();
-                renderSettersPreviewTable();
-                updateSetterVariableButtons();
-                
-                cardSettersPreview.classList.remove('hidden');
-                cardSettersPreview.scrollIntoView({ behavior: 'smooth' });
-            };
-            reader.readAsText(file, 'UTF-8');
-        });
-    }
-
-    // Funciones helper para parsear CSV
-    function parseCSV(text) {
-        const lines = text.split(/\r?\n/);
-        if (lines.length === 0) return { headers: [], rows: [] };
-        
-        const firstLine = lines[0];
-        const separator = firstLine.includes(';') ? ';' : ',';
-        
-        const headers = parseCSVLine(firstLine, separator);
-        const rows = [];
-        
-        for (let i = 1; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (!line) continue;
-            
-            const values = parseCSVLine(line, separator);
-            const row = {};
-            
-            headers.forEach((header, idx) => {
-                row[header] = values[idx] || '';
-            });
-            rows.push(row);
-        }
-        
-        return { headers, rows };
-    }
-
-    function parseCSVLine(line, separator) {
-        const result = [];
-        let current = '';
-        let inQuotes = false;
-        
-        for (let i = 0; i < line.length; i++) {
-            const char = line[i];
-            
-            if (char === '"') {
-                inQuotes = !inQuotes;
-            } else if (char === separator && !inQuotes) {
-                result.push(current.trim().replace(/^"|"$/g, ''));
-                current = '';
-            } else {
-                current += char;
-            }
-        }
-        result.push(current.trim().replace(/^"|"$/g, ''));
-        return result;
-    }
-
-    // Limpiar setters
-    btnClearSetters.addEventListener('click', () => {
-        settersPasteZone.innerHTML = `
-            <div class="paste-zone-placeholder">
-                <i class="fas fa-clipboard-list"></i>
-                <p>Haz clic aquí y presiona <b>Ctrl+V</b> para pegar las celdas del Sheet</p>
-                <p class="text-xs text-muted mt-2">o arrastra tu archivo CSV aquí</p>
-            </div>
-        `;
-        if (csvFileSetter) csvFileSetter.value = '';
-        if (csvSetterFilename) csvSetterFilename.textContent = '';
-        cardSettersPreview.classList.add('hidden');
-        setterParsedHeaders = [];
-        setterParsedRows = [];
-        selectedSetterPhoneCol = '';
-        selectedSetterNameCol = '';
-        selectedSetterDateCol = '';
-        selectedSetterTimeCol = '';
-        selectedSetterLinkCol = '';
-        selectedSetterCountryCol = '';
-    });
-}
-
-function populateSetterColumnSelectors() {
-    selectSetterPhone.innerHTML = '';
-    selectSetterName.innerHTML = '';
-    selectSetterDate.innerHTML = '';
-    selectSetterTime.innerHTML = '';
-    selectSetterLink.innerHTML = '';
-    selectSetterCountry.innerHTML = '';
-
-    // Opción vacía opcional para el nombre
-    const emptyNameOpt = new Option('-- No usar nombre --', '');
-    selectSetterName.add(emptyNameOpt);
-    
-    // Opción vacía opcional para el link
-    const emptyLinkOpt = new Option('-- No usar link --', '');
-    selectSetterLink.add(emptyLinkOpt);
-    
-    // Opción vacía opcional para el país
-    const emptyCountryOpt = new Option('-- No usar país --', '');
-    selectSetterCountry.add(emptyCountryOpt);
-
-    setterParsedHeaders.forEach(header => {
-        const optPhone = new Option(header, header);
-        const optName = new Option(header, header);
-        const optDate = new Option(header, header);
-        const optTime = new Option(header, header);
-        const optLink = new Option(header, header);
-        const optCountry = new Option(header, header);
-
-        selectSetterPhone.add(optPhone);
-        selectSetterName.add(optName);
-        selectSetterDate.add(optDate);
-        selectSetterTime.add(optTime);
-        selectSetterLink.add(optLink);
-        selectSetterCountry.add(optCountry);
-    });
-
-    // Auto-detectar
-    const phoneMatch = setterParsedHeaders.find(h => /tel|phone|num|cel|movil/i.test(h));
-    const nameMatch = setterParsedHeaders.find(h => /nom|name|cli|lead/i.test(h));
-    const dateMatch = setterParsedHeaders.find(h => /fech|date|dia|agenda|original/i.test(h));
-    const timeMatch = setterParsedHeaders.find(h => /hor|time|local/i.test(h));
-    const linkMatch = setterParsedHeaders.find(h => /link|meet|url/i.test(h));
-    const countryMatch = setterParsedHeaders.find(h => /pais|country/i.test(h));
-
-    // Si hay un encabezado que contenga "local" pero no "fecha", asumimos que es hora local
-    const localDateMatch = setterParsedHeaders.find(h => /fecha.*local|local.*fecha/i.test(h));
-    const localTimeMatch = setterParsedHeaders.find(h => /hora.*local|local.*hora/i.test(h));
-
-    if (phoneMatch) selectSetterPhone.value = phoneMatch;
-    if (nameMatch) selectSetterName.value = nameMatch;
-    
-    if (localDateMatch) {
-        selectSetterDate.value = localDateMatch;
-    } else if (dateMatch) {
-        selectSetterDate.value = dateMatch;
-    }
-
-    if (localTimeMatch) {
-        selectSetterTime.value = localTimeMatch;
-    } else if (timeMatch) {
-        selectSetterTime.value = timeMatch;
-    }
-    
-    if (linkMatch) selectSetterLink.value = linkMatch;
-    if (countryMatch) selectSetterCountry.value = countryMatch;
-
-    selectedSetterPhoneCol = selectSetterPhone.value;
-    selectedSetterNameCol = selectSetterName.value;
-    selectedSetterDateCol = selectSetterDate.value;
-    selectedSetterTimeCol = selectSetterTime.value;
-    selectedSetterLinkCol = selectSetterLink.value;
-    selectedSetterCountryCol = selectSetterCountry.value;
-
-    selectSetterPhone.onchange = (e) => { selectedSetterPhoneCol = e.target.value; renderSettersPreviewTable(); };
-    selectSetterName.onchange = (e) => { selectedSetterNameCol = e.target.value; renderSettersPreviewTable(); };
-    selectSetterDate.onchange = (e) => { selectedSetterDateCol = e.target.value; renderSettersPreviewTable(); };
-    selectSetterTime.onchange = (e) => { selectedSetterTimeCol = e.target.value; renderSettersPreviewTable(); };
-    selectSetterLink.onchange = (e) => { selectedSetterLinkCol = e.target.value; renderSettersPreviewTable(); };
-    selectSetterCountry.onchange = (e) => { selectedSetterCountryCol = e.target.value; renderSettersPreviewTable(); };
-}
-
-function renderSettersPreviewTable() {
-    settersTableBody.innerHTML = '';
-    
-    setterParsedRows.forEach((row, idx) => {
-        const tr = document.createElement('tr');
-        
-        const tdIdx = document.createElement('td');
-        tdIdx.textContent = idx + 1;
-        tr.appendChild(tdIdx);
-
-        const tdName = document.createElement('td');
-        tdName.textContent = selectedSetterNameCol ? row[selectedSetterNameCol] : 'N/A';
-        tr.appendChild(tdName);
-
-        const tdPhone = document.createElement('td');
-        tdPhone.textContent = selectedSetterPhoneCol ? row[selectedSetterPhoneCol] : 'N/A';
-        tr.appendChild(tdPhone);
-
-        // Input para País
-        const tdCountry = document.createElement('td');
-        const countryVal = selectedSetterCountryCol ? row[selectedSetterCountryCol] : '';
-        const inputCountry = document.createElement('input');
-        inputCountry.type = 'text';
-        inputCountry.className = 'setter-edit-input';
-        inputCountry.value = countryVal;
-        inputCountry.oninput = (e) => {
-            row[selectedSetterCountryCol] = e.target.value;
-        };
-        tdCountry.appendChild(inputCountry);
-        tr.appendChild(tdCountry);
-
-        // Input para Fecha Local
-        const tdDate = document.createElement('td');
-        const dateVal = selectedSetterDateCol ? row[selectedSetterDateCol] : '';
-        const inputDate = document.createElement('input');
-        inputDate.type = 'text';
-        inputDate.className = 'setter-edit-input';
-        inputDate.value = dateVal;
-        inputDate.oninput = (e) => {
-            row[selectedSetterDateCol] = e.target.value;
-        };
-        tdDate.appendChild(inputDate);
-        tr.appendChild(tdDate);
-
-        // Input para Hora Local
-        const tdTime = document.createElement('td');
-        const timeVal = selectedSetterTimeCol ? row[selectedSetterTimeCol] : '';
-        const inputTime = document.createElement('input');
-        inputTime.type = 'text';
-        inputTime.className = 'setter-edit-input';
-        inputTime.value = timeVal;
-        inputTime.oninput = (e) => {
-            row[selectedSetterTimeCol] = e.target.value;
-        };
-        tdTime.appendChild(inputTime);
-        tr.appendChild(tdTime);
-
-        // Input para Link de Meet
-        const tdLink = document.createElement('td');
-        const linkVal = selectedSetterLinkCol ? row[selectedSetterLinkCol] : '';
-        const inputLink = document.createElement('input');
-        inputLink.type = 'text';
-        inputLink.className = 'setter-edit-input';
-        inputLink.value = linkVal;
-        inputLink.oninput = (e) => {
-            row[selectedSetterLinkCol] = e.target.value;
-        };
-        tdLink.appendChild(inputLink);
-        tr.appendChild(tdLink);
-
-        // Borrar fila
-        const tdActions = document.createElement('td');
-        const btnDel = document.createElement('button');
-        btnDel.className = 'btn btn-danger btn-sm';
-        btnDel.innerHTML = '<i class="fas fa-trash-alt"></i>';
-        btnDel.onclick = () => {
-            setterParsedRows.splice(idx, 1);
-            renderSettersPreviewTable();
-        };
-        tdActions.appendChild(btnDel);
-        tr.appendChild(tdActions);
-
-        settersTableBody.appendChild(tr);
-    });
-
-    settersCountText.textContent = `${setterParsedRows.length} leads confirmados encontrados.`;
-    updateSetterVariableButtons();
-}
-
-function updateSetterVariableButtons() {
-    setterVariableButtons.innerHTML = '';
-    const spanText = document.createElement('span');
-    spanText.className = 'text-muted text-sm';
-    spanText.textContent = 'Insertar variable: ';
-    setterVariableButtons.appendChild(spanText);
-
-    const vars = ['{Nombre}', '{FechaLocal}', '{HoraLocal}', '{Link}', '{Pais}'];
-    vars.forEach(v => {
-        const btn = document.createElement('button');
-        btn.className = 'btn btn-tag';
-        btn.textContent = v;
-        btn.addEventListener('click', () => {
-            insertTextAtCursor(setterTemplateTextArea, v);
-        });
-        setterVariableButtons.appendChild(btn);
-    });
-}
-
-// Cargar a consola
-if (btnLoadSettersToConsole) {
-    btnLoadSettersToConsole.addEventListener('click', () => {
-        if (setterParsedRows.length === 0) {
-            alert("No hay ningún lead confirmado cargado.");
-            return;
-        }
-
-        if (!selectedSetterPhoneCol) {
-            alert("Por favor selecciona la columna de teléfono.");
-            return;
-        }
-
-        const template = setterTemplateTextArea.value.trim();
-        if (!template) {
-            alert("Por favor escribe la plantilla de mensaje.");
-            return;
-        }
-
-        if (!confirm(`¿Deseas cargar estos ${setterParsedRows.length} leads confirmados en la consola de envío?`)) {
-            return;
-        }
-
-        // Traducimos las variables locales del confirmador a las columnas reales
-        let globalTemplate = template;
-        if (selectedSetterNameCol) {
-            globalTemplate = globalTemplate.replace(/{Nombre}/gi, `{${selectedSetterNameCol}}`);
-        }
-        if (selectedSetterDateCol) {
-            globalTemplate = globalTemplate.replace(/{FechaLocal}/gi, `{${selectedSetterDateCol}}`);
-        }
-        if (selectedSetterTimeCol) {
-            globalTemplate = globalTemplate.replace(/{HoraLocal}/gi, `{${selectedSetterTimeCol}}`);
-        }
-        if (selectedSetterLinkCol) {
-            globalTemplate = globalTemplate.replace(/{Link}/gi, `{${selectedSetterLinkCol}}`);
-        }
-        if (selectedSetterCountryCol) {
-            globalTemplate = globalTemplate.replace(/{Pais}/gi, `{${selectedSetterCountryCol}}`);
-        }
-
-        // Cargar historial para filtrar duplicados
-        let history = [];
-        try {
-            history = JSON.parse(localStorage.getItem('sent_leads_history') || '[]');
-        } catch (e) {
-            history = [];
-        }
-
-        const filteredRows = [];
-        let duplicateCount = 0;
-
-        setterParsedRows.forEach(row => {
-            const phone = row[selectedSetterPhoneCol];
-            const cleanPhone = phone ? phone.replace(/\D/g, '') : '';
-            const compiledMsg = compileTemplate(globalTemplate, row);
-
-            const isAlreadySent = history.some(h => h.phone === cleanPhone && h.text === compiledMsg);
-
-            if (isAlreadySent) {
-                duplicateCount++;
-            } else {
-                filteredRows.push(row);
-            }
-        });
-
-        if (filteredRows.length === 0) {
-            alert(`Todos los ${setterParsedRows.length} leads ya recibieron este mensaje anteriormente. No se cargará ningún lead.`);
-            return;
-        }
-
-        if (duplicateCount > 0) {
-            alert(`Se omitieron ${duplicateCount} leads porque ya se les había enviado este mensaje anteriormente. Se cargarán los ${filteredRows.length} leads restantes.`);
-        }
-
-        // Armamos parsedRows globales con los filtrados
-        parsedRows = filteredRows.map(row => {
-            return { ...row };
-        });
-
-        // Configurar los selectores y cabeceras globales
-        parsedHeaders = [...setterParsedHeaders];
-        selectedPhoneCol = selectedSetterPhoneCol;
-        selectedNameCol = selectedSetterNameCol;
-
-        // Cargar plantilla global
-        templateTextArea.value = globalTemplate;
-        updatePreview();
-
-        // Armar campaña
-        campaignData = {
-            status: 'STOPPED',
-            index: 0,
-            total: parsedRows.length,
-            queue: parsedRows.map((r, idx) => {
-                const name = selectedNameCol ? r[selectedNameCol] : 'Contacto';
-                const phone = r[selectedPhoneCol];
-                const text = compileTemplate(globalTemplate, r);
-                return {
-                    id: idx + 1,
-                    name: name,
-                    phone: phone,
-                    status: 'pending',
-                    text: text
-                };
-            })
-        };
-
-        // Renderizar consola
-        updateConsoleUI();
-        updateConsoleButtonsState();
-
-        // Mover a la pestaña de consola
-        document.getElementById('btn-tab-console').click();
-
-        alert(`¡Campaña cargada con éxito! ${parsedRows.length} mensajes personalizados listos en la Consola.`);
-    });
-}
-
 // Historial de Envíos y Safeguards
 function addToSentHistory(phone, text) {
     if (!phone) return;
@@ -1558,113 +978,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (leadsSyncStartDate) leadsSyncStartDate.value = todayStr;
     if (leadsSyncEndDate) leadsSyncEndDate.value = todayStr;
 
-    // Inicializar selectores de plantillas y botones de variables de setters
+    // Inicializar selectores de plantillas
     populateTemplateSelectors();
-    updateSetterVariableButtons();
 });
-
-// Lógica de Sincronización Directa de Leads desde Google Web App
-if (btnSyncLeads) {
-    btnSyncLeads.addEventListener('click', async () => {
-        const url = syncWebAppUrl.value.trim();
-        const token = syncSecurityToken.value.trim();
-        const startDate = syncStartDate.value;
-        const endDate = syncEndDate.value;
-        const color = syncColorId.value;
-
-        if (!url) {
-            alert('Por favor introduce la URL de tu Apps Script Web App.');
-            return;
-        }
-
-        if (!startDate || !endDate) {
-            alert('Por favor selecciona las fechas de inicio y fin para la búsqueda.');
-            return;
-        }
-
-        // Deshabilitar botón y mostrar carga
-        btnSyncLeads.disabled = true;
-        const originalText = btnSyncLeads.innerHTML;
-        btnSyncLeads.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...';
-
-        try {
-            // Guardar configuración en localStorage
-            localStorage.setItem('sync_web_app_url', url);
-            localStorage.setItem('sync_security_token', token);
-
-            // Construir URL con parámetros
-            const queryUrl = `${url}?startDate=${startDate}&endDate=${endDate}&color=${color}&token=${encodeURIComponent(token)}`;
-            
-            console.log(`Realizando petición de sincronización a: ${queryUrl}`);
-            const response = await fetch(queryUrl, { redirect: 'follow' });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            
-            if (data.error) {
-                alert(`Error devuelto por Apps Script: ${data.error}`);
-                return;
-            }
-
-            if (!Array.isArray(data) || data.length === 0) {
-                alert('No se encontraron leads confirmados en el calendario para las fechas y color seleccionados.');
-                return;
-            }
-
-            // Procesar los datos recibidos
-            // Las columnas devueltas por el Apps Script son:
-            // Nombre, Telefono, Pais, Fecha Original (ARG), Fecha Local (Cliente), Hora Local (Cliente), Link
-            setterParsedHeaders = ["Nombre", "Telefono", "Pais", "Fecha Original (ARG)", "Fecha Local (Cliente)", "Hora Local (Cliente)", "Link"];
-            
-            // Convertir la lista de objetos de vuelta a objetos indexados por cabecera
-            setterParsedRows = data.map(item => {
-                return {
-                    "Nombre": item.nombre || item.Nombre || '',
-                    "Telefono": item.telefono || item.Telefono || '',
-                    "Pais": item.pais || item.Pais || '',
-                    "Fecha Original (ARG)": item.fechaOriginal || item.fechaOriginalArg || item["Fecha Original (ARG)"] || '',
-                    "Fecha Local (Cliente)": item.fechaLocal || item["Fecha Local (Cliente)"] || '',
-                    "Hora Local (Cliente)": item.horaLocal || item["Hora Local (Cliente)"] || '',
-                    "Link": item.link || item.Link || ''
-                };
-            });
-
-            // Actualizar selectores en la interfaz de Setters
-            populateSetterColumnSelectors();
-
-            // Auto-mapear las columnas ya que los nombres coinciden exactamente
-            selectedSetterPhoneCol = 'Telefono';
-            selectedSetterNameCol = 'Nombre';
-            selectedSetterDateCol = 'Fecha Local (Cliente)';
-            selectedSetterTimeCol = 'Hora Local (Cliente)';
-            selectedSetterLinkCol = 'Link';
-            selectedSetterCountryCol = 'Pais';
-
-            // Actualizar selectores a los valores mapeados
-            selectSetterPhone.value = 'Telefono';
-            selectSetterName.value = 'Nombre';
-            selectSetterDate.value = 'Fecha Local (Cliente)';
-            selectSetterTime.value = 'Hora Local (Cliente)';
-            selectSetterLink.value = 'Link';
-            selectSetterCountry.value = 'Pais';
-
-            // Mostrar tarjeta de previsualización y renderizar tabla
-            cardSettersPreview.classList.remove('hidden');
-            renderSettersPreviewTable();
-            
-            alert(`Sincronización completada. Se importaron ${setterParsedRows.length} leads confirmados desde tu Calendario.`);
-        } catch (error) {
-            console.error('Error sincronizando calendario:', error);
-            alert(`No se pudo realizar la sincronización. Verifica la URL de tu Web App y tu conexión de internet. Detalle: ${error.message}`);
-        } finally {
-            btnSyncLeads.disabled = false;
-            btnSyncLeads.innerHTML = originalText;
-        }
-    });
-}
 
 // Lógica de Sincronización Directa de Leads de Campaña desde Google Web App
 if (btnSyncLeadsCampaign) {
@@ -1780,22 +1096,16 @@ if (savedTemplates.length === 0) {
 }
 
 function populateTemplateSelectors() {
-    if (!selectEventTemplate || !selectSetterTemplate) return;
+    if (!selectEventTemplate) return;
 
-    // Limpiar dropdowns
+    // Limpiar dropdown
     selectEventTemplate.innerHTML = '<option value="">-- Seleccionar Plantilla Guardada --</option>';
-    selectSetterTemplate.innerHTML = '<option value="">-- Seleccionar Plantilla Guardada --</option>';
 
     savedTemplates.forEach(tpl => {
         const opt1 = document.createElement('option');
         opt1.value = tpl.id;
         opt1.textContent = tpl.name;
         selectEventTemplate.appendChild(opt1);
-
-        const opt2 = document.createElement('option');
-        opt2.value = tpl.id;
-        opt2.textContent = tpl.name;
-        selectSetterTemplate.appendChild(opt2);
     });
 }
 
@@ -1810,20 +1120,6 @@ if (selectEventTemplate) {
             templateTextArea.value = tpl.text;
             eventTemplateNameInput.value = tpl.name;
             updatePreview();
-        }
-    });
-}
-
-// Cargar plantilla cuando cambia el dropdown de setters
-if (selectSetterTemplate) {
-    selectSetterTemplate.addEventListener('change', () => {
-        const tplId = selectSetterTemplate.value;
-        if (!tplId) return;
-
-        const tpl = savedTemplates.find(t => t.id === tplId);
-        if (tpl) {
-            setterTemplateTextArea.value = tpl.text;
-            setterTemplateNameInput.value = tpl.name;
         }
     });
 }
@@ -1844,25 +1140,6 @@ if (btnSaveEventTemplate) {
         }
 
         saveOrUpdateTemplate(name, text, true);
-    });
-}
-
-// Guardar plantilla desde Setters
-if (btnSaveSetterTemplate) {
-    btnSaveSetterTemplate.addEventListener('click', () => {
-        const name = setterTemplateNameInput.value.trim();
-        const text = setterTemplateTextArea.value.trim();
-
-        if (!name) {
-            alert('Por favor introduce un nombre para la plantilla.');
-            return;
-        }
-        if (!text) {
-            alert('Por favor escribe el contenido de la plantilla antes de guardar.');
-            return;
-        }
-
-        saveOrUpdateTemplate(name, text, false);
     });
 }
 
@@ -1890,11 +1167,10 @@ function saveOrUpdateTemplate(name, text, isEvent) {
     localStorage.setItem('saved_message_templates', JSON.stringify(savedTemplates));
     populateTemplateSelectors();
 
-    // Seleccionar la plantilla guardada en ambos dropdowns
+    // Seleccionar la plantilla guardada
     const updatedTpl = savedTemplates.find(t => t.name.toLowerCase() === name.toLowerCase());
     if (updatedTpl) {
         if (selectEventTemplate) selectEventTemplate.value = updatedTpl.id;
-        if (selectSetterTemplate) selectSetterTemplate.value = updatedTpl.id;
     }
 }
 
