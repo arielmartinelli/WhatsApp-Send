@@ -98,7 +98,8 @@ let campaignData = {
 const tabTitles = {
     'tab-dashboard': { title: 'Conexión con WhatsApp', subtitle: 'Vincular tu cuenta de WhatsApp Business o Personal' },
     'tab-leads': { title: 'Generar Mensaje', subtitle: 'Importar leads de campaña, redactar plantilla y preparar envío' },
-    'tab-console': { title: 'Consola de Control', subtitle: 'Supervisar y ejecutar la campaña de envío' }
+    'tab-console': { title: 'Consola de Control', subtitle: 'Supervisar y ejecutar la campaña de envío' },
+    'tab-stats': { title: 'Reportes y Métricas', subtitle: 'Analizar el rendimiento de envíos e historial de mensajes' }
 };
 
 navButtons.forEach(btn => {
@@ -122,6 +123,13 @@ navButtons.forEach(btn => {
         if (tabTitles[targetTab]) {
             pageTitle.textContent = tabTitles[targetTab].title;
             pageSubtitle.textContent = tabTitles[targetTab].subtitle;
+        }
+
+        // Si se cambia a la pestaña de reportes, refrescar estadísticas
+        if (targetTab === 'tab-stats') {
+            if (typeof refreshStatsDashboard === 'function') {
+                refreshStatsDashboard();
+            }
         }
     });
 });
@@ -566,6 +574,9 @@ socket.on('message-status', (data) => {
             lead.error = data.error;
             if (data.status === 'sent') {
                 addToSentHistory(lead.phone, lead.text);
+                recordMessageStat(lead.phone, lead.name, 'sent');
+            } else if (data.status === 'failed') {
+                recordMessageStat(lead.phone, lead.name, 'failed', data.error);
             }
         }
     }
@@ -949,14 +960,6 @@ if (btnClearSentHistory) {
 
 // Inicializar configuraciones y plantillas al cargar el DOM
 document.addEventListener('DOMContentLoaded', () => {
-    // Sincronización API - Cargar valores guardados (Setters)
-    if (syncWebAppUrl) {
-        syncWebAppUrl.value = localStorage.getItem('sync_web_app_url') || '';
-    }
-    if (syncSecurityToken) {
-        syncSecurityToken.value = localStorage.getItem('sync_security_token') || '';
-    }
-
     // Sincronización API - Cargar valores guardados (Leads Campaña)
     if (leadsSyncWebAppUrl) {
         leadsSyncWebAppUrl.value = localStorage.getItem('leads_sync_web_app_url') || '';
@@ -965,18 +968,31 @@ document.addEventListener('DOMContentLoaded', () => {
         leadsSyncSecurityToken.value = localStorage.getItem('leads_sync_security_token') || '';
     }
     
-    // Configurar fechas por defecto a "hoy" en Argentina (según zona horaria del sistema)
+    // Configurar fechas por defecto a "hoy"
     const today = new Date();
     const yyyy = today.getFullYear();
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
     const todayStr = `${yyyy}-${mm}-${dd}`;
     
-    if (syncStartDate) syncStartDate.value = todayStr;
-    if (syncEndDate) syncEndDate.value = todayStr;
-
     if (leadsSyncStartDate) leadsSyncStartDate.value = todayStr;
     if (leadsSyncEndDate) leadsSyncEndDate.value = todayStr;
+
+    // Configurar rango de fechas de reportes (últimos 30 días)
+    const past30Days = new Date();
+    past30Days.setDate(today.getDate() - 30);
+    const pYyyy = past30Days.getFullYear();
+    const pMm = String(past30Days.getMonth() + 1).padStart(2, '0');
+    const pDd = String(past30Days.getDate()).padStart(2, '0');
+    const past30DaysStr = `${pYyyy}-${pMm}-${pDd}`;
+
+    const statsStartDate = document.getElementById('stats-start-date');
+    const statsEndDate = document.getElementById('stats-end-date');
+    if (statsStartDate) statsStartDate.value = past30DaysStr;
+    if (statsEndDate) statsEndDate.value = todayStr;
+
+    // Inicializar listeners del panel de estadísticas
+    initStatsListeners();
 
     // Inicializar selectores de plantillas
     populateTemplateSelectors();
@@ -1258,4 +1274,571 @@ if (btnLoadLeadsToConsole) {
 
         alert(`¡Campaña cargada con éxito! ${parsedRows.length} mensajes personalizados listos en la Consola.`);
     });
+}
+
+// ==========================================
+// 8. Lógica de Reportes y Estadísticas
+// ==========================================
+
+// Mapear el prefijo telefónico al país
+function detectCountryFromPhone(phone) {
+    if (!phone) return 'Otro / Internacional';
+    const cleanPhone = phone.replace(/\D/g, ''); // Dejar solo dígitos
+
+    if (cleanPhone.startsWith('34')) return 'España';
+    if (cleanPhone.startsWith('54')) return 'Argentina';
+    if (cleanPhone.startsWith('56')) return 'Chile';
+    if (cleanPhone.startsWith('57')) return 'Colombia';
+    if (cleanPhone.startsWith('52')) return 'México';
+    if (cleanPhone.startsWith('598')) return 'Uruguay';
+    if (cleanPhone.startsWith('593')) return 'Ecuador';
+    if (cleanPhone.startsWith('51')) return 'Perú';
+    if (cleanPhone.startsWith('58')) return 'Venezuela';
+    if (cleanPhone.startsWith('55')) return 'Brasil';
+    if (cleanPhone.startsWith('502')) return 'Guatemala';
+    if (cleanPhone.startsWith('503')) return 'El Salvador';
+    if (cleanPhone.startsWith('504')) return 'Honduras';
+    if (cleanPhone.startsWith('505')) return 'Nicaragua';
+    if (cleanPhone.startsWith('506')) return 'Costa Rica';
+    if (cleanPhone.startsWith('507')) return 'Panamá';
+    if (cleanPhone.startsWith('591')) return 'Bolivia';
+    if (cleanPhone.startsWith('595')) return 'Paraguay';
+    if (cleanPhone.startsWith('1')) return 'USA / Canadá';
+    
+    return 'Otro / Internacional';
+}
+
+// Registrar envío exitoso o fallido en el log histórico local
+function recordMessageStat(phone, name, status, error = '') {
+    let stats = [];
+    try {
+        stats = JSON.parse(localStorage.getItem('messages_stats_db') || '[]');
+    } catch (e) {
+        stats = [];
+    }
+
+    const cleanPhone = phone ? phone.replace(/\D/g, '') : '';
+    const country = detectCountryFromPhone(cleanPhone);
+
+    const record = {
+        timestamp: new Date().toISOString(),
+        phone: cleanPhone,
+        name: name || 'Contacto',
+        status: status, // 'sent' | 'failed'
+        error: error || '',
+        country: country
+    };
+
+    stats.push(record);
+    
+    // Evitar almacenamiento excesivo (máximo 10,000 registros históricos)
+    if (stats.length > 10000) {
+        stats.shift();
+    }
+    
+    localStorage.setItem('messages_stats_db', JSON.stringify(stats));
+}
+
+// Obtener o crear el elemento flotante de tooltip
+function getOrCreateChartTooltip() {
+    let tooltip = document.getElementById('chart-global-tooltip');
+    if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.id = 'chart-global-tooltip';
+        tooltip.className = 'chart-tooltip';
+        document.body.appendChild(tooltip);
+    }
+    return tooltip;
+}
+
+// Dibujar gráfico de líneas de envíos diarios usando SVG puros
+function drawSvgLineChart(container, data) {
+    container.innerHTML = '';
+    
+    if (data.length === 1) {
+        data = [{ label: '', count: 0 }, ...data];
+    }
+
+    const width = 500;
+    const height = 200;
+    const paddingLeft = 40;
+    const paddingRight = 20;
+    const paddingTop = 25;
+    const paddingBottom = 30;
+
+    const chartWidth = width - paddingLeft - paddingRight;
+    const chartHeight = height - paddingTop - paddingBottom;
+
+    // Obtener valor máximo para escalar
+    const maxVal = Math.max(...data.map(d => d.count), 5);
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.setAttribute('class', 'chart-svg');
+
+    // Gradiente translúcido
+    svg.innerHTML = `
+        <defs>
+            <linearGradient id="chart-gradient-violet" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.35" />
+                <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.00" />
+            </linearGradient>
+        </defs>
+    `;
+
+    // 1. Rejilla horizontal
+    const gridDivisions = 4;
+    for (let i = 0; i <= gridDivisions; i++) {
+        const y = paddingTop + (chartHeight / gridDivisions) * i;
+        const value = Math.round(maxVal - (maxVal / gridDivisions) * i);
+        
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', paddingLeft);
+        line.setAttribute('y1', y);
+        line.setAttribute('x2', width - paddingRight);
+        line.setAttribute('y2', y);
+        line.setAttribute('class', 'chart-grid-line');
+        svg.appendChild(line);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', paddingLeft - 10);
+        text.setAttribute('y', y + 4);
+        text.setAttribute('class', 'chart-axis-text');
+        text.setAttribute('style', 'text-anchor: end;');
+        text.textContent = value;
+        svg.appendChild(text);
+    }
+
+    // 2. Calcular puntos
+    const points = data.map((d, index) => {
+        const x = paddingLeft + (chartWidth / (data.length - 1)) * index;
+        const y = paddingTop + chartHeight - (d.count / maxVal) * chartHeight;
+        return { x, y, label: d.label, count: d.count };
+    });
+
+    // 3. Área sombreada
+    let areaPathD = `M ${points[0].x} ${paddingTop + chartHeight} `;
+    points.forEach(p => {
+        areaPathD += `L ${p.x} ${p.y} `;
+    });
+    areaPathD += `L ${points[points.length - 1].x} ${paddingTop + chartHeight} Z`;
+
+    const areaPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    areaPath.setAttribute('d', areaPathD);
+    areaPath.setAttribute('class', 'chart-area');
+    svg.appendChild(areaPath);
+
+    // 4. Línea principal
+    let linePathD = `M ${points[0].x} ${points[0].y} `;
+    for (let i = 1; i < points.length; i++) {
+        linePathD += `L ${points[i].x} ${points[i].y} `;
+    }
+
+    const linePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    linePath.setAttribute('d', linePathD);
+    linePath.setAttribute('class', 'chart-line');
+    svg.appendChild(linePath);
+
+    // 5. Nodos e Interacción
+    const tooltip = getOrCreateChartTooltip();
+
+    points.forEach((p, idx) => {
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', p.x);
+        circle.setAttribute('cy', p.y);
+        circle.setAttribute('class', 'chart-point');
+        
+        circle.addEventListener('mouseover', (e) => {
+            tooltip.style.opacity = '1';
+            tooltip.innerHTML = `<strong>${p.label}</strong><br/>Envíos: ${p.count}`;
+            tooltip.style.left = `${e.pageX + 15}px`;
+            tooltip.style.top = `${e.pageY - 15}px`;
+        });
+        circle.addEventListener('mousemove', (e) => {
+            tooltip.style.left = `${e.pageX + 15}px`;
+            tooltip.style.top = `${e.pageY - 15}px`;
+        });
+        circle.addEventListener('mouseout', () => {
+            tooltip.style.opacity = '0';
+        });
+
+        svg.appendChild(circle);
+
+        // Etiquetas del eje X
+        if (data.length <= 10 || idx % Math.ceil(data.length / 7) === 0 || idx === data.length - 1) {
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', p.x);
+            text.setAttribute('y', paddingTop + chartHeight + 18);
+            text.setAttribute('class', 'chart-axis-text');
+            text.setAttribute('style', 'text-anchor: middle;');
+            text.textContent = p.label;
+            svg.appendChild(text);
+        }
+    });
+
+    container.appendChild(svg);
+}
+
+// Dibujar gráfico de barras de países usando SVG puros
+function drawSvgBarChart(container, data) {
+    container.innerHTML = '';
+
+    const width = 500;
+    const height = 200;
+    const paddingLeft = 90;
+    const paddingRight = 40;
+    const paddingTop = 20;
+    const paddingBottom = 20;
+
+    const chartWidth = width - paddingLeft - paddingRight;
+    const chartHeight = height - paddingTop - paddingBottom;
+
+    const maxVal = Math.max(...data.map(d => d.count), 1);
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.setAttribute('class', 'chart-svg');
+
+    // Gradiente esmeralda
+    svg.innerHTML = `
+        <defs>
+            <linearGradient id="chart-gradient-emerald" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#10b981" />
+                <stop offset="100%" stop-color="#059669" />
+            </linearGradient>
+        </defs>
+    `;
+
+    const barCount = data.length;
+    const barSpacing = chartHeight / Math.max(barCount, 5);
+    const barHeight = 18;
+
+    const tooltip = getOrCreateChartTooltip();
+
+    data.forEach((d, index) => {
+        const y = paddingTop + barSpacing * index + (barSpacing - barHeight) / 2;
+        const barWidth = (d.count / maxVal) * chartWidth;
+
+        // Nombre del país
+        const labelText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        labelText.setAttribute('x', paddingLeft - 12);
+        labelText.setAttribute('y', y + barHeight / 2 + 4);
+        labelText.setAttribute('class', 'chart-axis-text');
+        labelText.setAttribute('style', 'text-anchor: end; font-weight: 500;');
+        labelText.textContent = d.country;
+        svg.appendChild(labelText);
+
+        // Barra rectangular
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', paddingLeft);
+        rect.setAttribute('y', y);
+        rect.setAttribute('width', Math.max(barWidth, 4));
+        rect.setAttribute('height', barHeight);
+        rect.setAttribute('class', 'chart-bar');
+
+        rect.addEventListener('mouseover', (e) => {
+            tooltip.style.opacity = '1';
+            tooltip.innerHTML = `<strong>${d.country}</strong><br/>Envíos: ${d.count}`;
+            tooltip.style.left = `${e.pageX + 15}px`;
+            tooltip.style.top = `${e.pageY - 15}px`;
+        });
+        rect.addEventListener('mousemove', (e) => {
+            tooltip.style.left = `${e.pageX + 15}px`;
+            tooltip.style.top = `${e.pageY - 15}px`;
+        });
+        rect.addEventListener('mouseout', () => {
+            tooltip.style.opacity = '0';
+        });
+
+        svg.appendChild(rect);
+
+        // Cantidad de envíos
+        const valText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        valText.setAttribute('x', paddingLeft + barWidth + 8);
+        valText.setAttribute('y', y + barHeight / 2 + 4);
+        valText.setAttribute('class', 'chart-bar-value');
+        valText.textContent = d.count;
+        svg.appendChild(valText);
+    });
+
+    container.appendChild(svg);
+}
+
+// Renderizar la tabla de logs detallada en Reportes
+function renderStatsTable(data) {
+    const tbody = document.getElementById('stats-table-body');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+
+    if (data.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center text-muted">No hay registros de envíos que coincidan con los filtros.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    // Mostrar más recientes primero
+    const reversedData = [...data].reverse();
+
+    reversedData.forEach(row => {
+        const tr = document.createElement('tr');
+
+        const d = new Date(row.timestamp);
+        const formattedDate = d.toLocaleString();
+
+        const tdDate = document.createElement('td');
+        tdDate.textContent = formattedDate;
+        tr.appendChild(tdDate);
+
+        const tdName = document.createElement('td');
+        tdName.textContent = row.name;
+        tr.appendChild(tdName);
+
+        const tdPhone = document.createElement('td');
+        tdPhone.textContent = row.phone;
+        tr.appendChild(tdPhone);
+
+        const tdCountry = document.createElement('td');
+        tdCountry.textContent = row.country;
+        tr.appendChild(tdCountry);
+
+        const tdStatus = document.createElement('td');
+        if (row.status === 'sent') {
+            tdStatus.innerHTML = '<span class="badge badge-success"><i class="fas fa-check"></i> Éxito</span>';
+        } else {
+            tdStatus.innerHTML = '<span class="badge badge-danger"><i class="fas fa-times"></i> Falló</span>';
+        }
+        tr.appendChild(tdStatus);
+
+        const tdError = document.createElement('td');
+        if (row.status === 'sent') {
+            tdError.innerHTML = '<span class="success-text">Mensaje enviado ✅</span>';
+        } else {
+            tdError.innerHTML = `<span class="text-danger" title="${row.error}">Error: ${row.error || 'Desconocido'} ❌</span>`;
+        }
+        tr.appendChild(tdError);
+
+        tbody.appendChild(tr);
+    });
+}
+
+// Procesar datos de logs y mandarlos a graficar
+function renderStatsCharts(data) {
+    const lineContainer = document.getElementById('line-chart-container');
+    const barContainer = document.getElementById('bar-chart-container');
+    
+    if (!lineContainer || !barContainer) return;
+
+    if (data.length === 0) {
+        lineContainer.innerHTML = '<div class="text-muted text-center" style="margin: auto; padding: 20px;">Sin datos de envíos diarios.</div>';
+        barContainer.innerHTML = '<div class="text-muted text-center" style="margin: auto; padding: 20px;">Sin datos por países.</div>';
+        return;
+    }
+
+    // 1. Agrupar por día
+    const dailyMap = {};
+    data.forEach(item => {
+        const dateStr = item.timestamp.slice(0, 10); // 'yyyy-MM-dd'
+        dailyMap[dateStr] = (dailyMap[dateStr] || 0) + 1;
+    });
+
+    const sortedDates = Object.keys(dailyMap).sort();
+    const dailyData = sortedDates.map(date => {
+        const parts = date.split('-');
+        const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        const label = `${parts[2]} ${months[parseInt(parts[1]) - 1]}`;
+        return { label, count: dailyMap[date] };
+    });
+
+    // 2. Agrupar por país
+    const countryMap = {};
+    data.forEach(item => {
+        const country = item.country || 'Otro / Internacional';
+        countryMap[country] = (countryMap[country] || 0) + 1;
+    });
+
+    const sortedCountries = Object.keys(countryMap)
+        .map(country => ({ country, count: countryMap[country] }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+    drawSvgLineChart(lineContainer, dailyData);
+    drawSvgBarChart(barContainer, sortedCountries);
+}
+
+// Recargar los KPI cards, tabla de logs y gráficos
+function refreshStatsDashboard() {
+    let stats = [];
+    try {
+        stats = JSON.parse(localStorage.getItem('messages_stats_db') || '[]');
+    } catch (e) {
+        stats = [];
+    }
+
+    // 1. Calcular KPIs globales (acumulado histórico total)
+    const total = stats.length;
+    const success = stats.filter(s => s.status === 'sent').length;
+    const failed = stats.filter(s => s.status === 'failed').length;
+    const deliveryRate = total > 0 ? Math.round((success / total) * 100) : 0;
+
+    const totalEl = document.getElementById('stat-total-messages');
+    const successEl = document.getElementById('stat-success-messages');
+    const failedEl = document.getElementById('stat-failed-messages');
+    const deliveryEl = document.getElementById('stat-delivery-rate');
+
+    if (totalEl) totalEl.textContent = total;
+    if (successEl) successEl.textContent = success;
+    if (failedEl) failedEl.textContent = failed;
+    if (deliveryEl) deliveryEl.textContent = `${deliveryRate}%`;
+
+    // 2. Aplicar filtros dinámicos
+    const searchVal = document.getElementById('stats-search')?.value.toLowerCase().trim() || '';
+    const startDateVal = document.getElementById('stats-start-date')?.value || '';
+    const endDateVal = document.getElementById('stats-end-date')?.value || '';
+
+    let filteredStats = stats;
+
+    if (searchVal) {
+        filteredStats = filteredStats.filter(s => 
+            (s.name && s.name.toLowerCase().includes(searchVal)) || 
+            (s.phone && s.phone.includes(searchVal))
+        );
+    }
+    if (startDateVal) {
+        const startLimit = new Date(startDateVal + 'T00:00:00');
+        filteredStats = filteredStats.filter(s => new Date(s.timestamp) >= startLimit);
+    }
+    if (endDateVal) {
+        const endLimit = new Date(endDateVal + 'T23:59:59');
+        filteredStats = filteredStats.filter(s => new Date(s.timestamp) <= endLimit);
+    }
+
+    // 3. Renderizar resumen
+    const countSummary = document.getElementById('stats-count-summary');
+    if (countSummary) {
+        countSummary.textContent = `${filteredStats.length} registros coincidentes.`;
+    }
+
+    renderStatsTable(filteredStats);
+    renderStatsCharts(filteredStats);
+}
+
+// Registrar event listeners de filtros y exportación
+function initStatsListeners() {
+    const statsSearch = document.getElementById('stats-search');
+    const statsStartDate = document.getElementById('stats-start-date');
+    const statsEndDate = document.getElementById('stats-end-date');
+    const btnResetFilters = document.getElementById('btn-reset-filters');
+    const btnClearStatsDb = document.getElementById('btn-clear-stats-db');
+    const btnExportStatsCsv = document.getElementById('btn-export-stats-csv');
+
+    if (statsSearch) {
+        statsSearch.addEventListener('input', () => refreshStatsDashboard());
+    }
+    if (statsStartDate) {
+        statsStartDate.addEventListener('change', () => refreshStatsDashboard());
+    }
+    if (statsEndDate) {
+        statsEndDate.addEventListener('change', () => refreshStatsDashboard());
+    }
+    if (btnResetFilters) {
+        btnResetFilters.addEventListener('click', () => {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const todayStr = `${yyyy}-${mm}-${dd}`;
+
+            const past30Days = new Date();
+            past30Days.setDate(today.getDate() - 30);
+            const pYyyy = past30Days.getFullYear();
+            const pMm = String(past30Days.getMonth() + 1).padStart(2, '0');
+            const pDd = String(past30Days.getDate()).padStart(2, '0');
+            const past30DaysStr = `${pYyyy}-${pMm}-${pDd}`;
+
+            if (statsSearch) statsSearch.value = '';
+            if (statsStartDate) statsStartDate.value = past30DaysStr;
+            if (statsEndDate) statsEndDate.value = todayStr;
+            refreshStatsDashboard();
+        });
+    }
+    if (btnClearStatsDb) {
+        btnClearStatsDb.addEventListener('click', () => {
+            if (confirm('⚠️ ¿Estás completamente seguro de borrar TODO el historial de estadísticas de reportes? Esta acción no se puede deshacer.')) {
+                localStorage.removeItem('messages_stats_db');
+                refreshStatsDashboard();
+                alert('Historial de estadísticas borrado correctamente.');
+            }
+        });
+    }
+    if (btnExportStatsCsv) {
+        btnExportStatsCsv.addEventListener('click', () => {
+            exportStatsToCsv();
+        });
+    }
+}
+
+// Exportar logs filtrados a CSV
+function exportStatsToCsv() {
+    let stats = [];
+    try {
+        stats = JSON.parse(localStorage.getItem('messages_stats_db') || '[]');
+    } catch (e) {
+        stats = [];
+    }
+
+    if (stats.length === 0) {
+        alert('No hay registros de reportes para exportar.');
+        return;
+    }
+
+    const searchVal = document.getElementById('stats-search')?.value.toLowerCase().trim() || '';
+    const startDateVal = document.getElementById('stats-start-date')?.value || '';
+    const endDateVal = document.getElementById('stats-end-date')?.value || '';
+
+    let filteredStats = stats;
+    if (searchVal) {
+        filteredStats = filteredStats.filter(s => 
+            (s.name && s.name.toLowerCase().includes(searchVal)) || 
+            (s.phone && s.phone.includes(searchVal))
+        );
+    }
+    if (startDateVal) {
+        const startLimit = new Date(startDateVal + 'T00:00:00');
+        filteredStats = filteredStats.filter(s => new Date(s.timestamp) >= startLimit);
+    }
+    if (endDateVal) {
+        const endLimit = new Date(endDateVal + 'T23:59:59');
+        filteredStats = filteredStats.filter(s => new Date(s.timestamp) <= endLimit);
+    }
+
+    let csvContent = '\uFEFF';
+    csvContent += 'Fecha,Nombre,Telefono,Pais,Estado,Detalle\n';
+
+    filteredStats.forEach(item => {
+        const date = new Date(item.timestamp).toLocaleString().replace(/"/g, '""');
+        const name = (item.name || '').replace(/"/g, '""');
+        const phone = item.phone || '';
+        const country = item.country || '';
+        const status = item.status === 'sent' ? 'Exito' : 'Fallo';
+        const error = (item.error || '').replace(/"/g, '""');
+
+        csvContent += `"${date}","${name}","${phone}","${country}","${status}","${error}"\n`;
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    
+    const dateStr = new Date().toISOString().slice(0, 10);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `reporte_estadisticas_whatsapp_${dateStr}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }

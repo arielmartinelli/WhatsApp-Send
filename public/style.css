@@ -1073,4 +1073,235 @@ textarea#leads-paste-area {
     width: 100%;
 }
 
+/* ==========================================
+   7. Estilos de Reportes y Estadísticas
+   ========================================== */
+
+/* KPI Metrics Grid */
+.stats-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+}
+
+.kpi-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.kpi-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+}
+
+.kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+}
+
+.kpi-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+.kpi-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.kpi-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.kpi-value {
+    font-size: 28px;
+    font-family: var(--font-heading);
+    font-weight: 700;
+}
+
+/* Card Themes */
+.kpi-card.violet::before { background: linear-gradient(to bottom, #8b5cf6, #6366f1); }
+.kpi-card.violet .kpi-icon {
+    background: rgba(139, 92, 246, 0.15);
+    color: #a78bfa;
+}
+.kpi-card.violet .kpi-value { color: #c4b5fd; }
+
+.kpi-card.emerald::before { background: linear-gradient(to bottom, #10b981, #059669); }
+.kpi-card.emerald .kpi-icon {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+}
+.kpi-card.emerald .kpi-value { color: #6ee7b7; }
+
+.kpi-card.rose::before { background: linear-gradient(to bottom, #f43f5e, #e11d48); }
+.kpi-card.rose .kpi-icon {
+    background: rgba(244, 63, 94, 0.15);
+    color: #fb7185;
+}
+.kpi-card.rose .kpi-value { color: #fca5a5; }
+
+.kpi-card.amber::before { background: linear-gradient(to bottom, #f59e0b, #d97706); }
+.kpi-card.amber .kpi-icon {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+}
+.kpi-card.amber .kpi-value { color: #fde047; }
+
+/* Charts Layout */
+.stats-charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 24px;
+}
+
+/* Chart Container & SVGs */
+.chart-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chart-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.chart-grid-line {
+    stroke: rgba(255, 255, 255, 0.05);
+    stroke-width: 1;
+}
+
+.chart-axis-line {
+    stroke: rgba(255, 255, 255, 0.15);
+    stroke-width: 1;
+}
+
+.chart-axis-text {
+    fill: var(--text-secondary);
+    font-size: 11px;
+    font-family: var(--font-body);
+}
+
+.chart-line {
+    stroke: #8b5cf6;
+    stroke-width: 3.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0px 6px 8px rgba(139, 92, 246, 0.3));
+    fill: none;
+    animation: drawPath 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.chart-area {
+    fill: url(#chart-gradient-violet);
+    opacity: 0.15;
+    animation: fadeIn 1.2s ease forwards;
+}
+
+.chart-point {
+    fill: #121820;
+    stroke: #8b5cf6;
+    stroke-width: 3;
+    r: 5;
+    transition: r 0.15s ease, stroke-width 0.15s ease;
+    cursor: pointer;
+}
+
+.chart-point:hover {
+    r: 7;
+    stroke-width: 4;
+}
+
+/* Bar Chart specific */
+.chart-bar {
+    fill: url(#chart-gradient-emerald);
+    rx: 5px;
+    transition: opacity 0.2s ease;
+    cursor: pointer;
+}
+
+.chart-bar:hover {
+    opacity: 0.85;
+}
+
+.chart-bar-value {
+    fill: var(--text-primary);
+    font-size: 11px;
+    font-weight: 600;
+    text-anchor: start;
+}
+
+/* Chart Tooltip */
+.chart-tooltip {
+    position: absolute;
+    background: rgba(17, 24, 39, 0.95);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--text-primary);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    z-index: 100;
+}
+
+/* SVG Gradients definitions */
+@keyframes drawPath {
+    from {
+        stroke-dasharray: 1000;
+        stroke-dashoffset: 1000;
+    }
+    to {
+        stroke-dasharray: 1000;
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 0.15; }
+}
+
+/* Log Table Specific CSS adjustments */
+.stats-edit-input {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 13px;
+    width: 100%;
+}
+
+.stats-edit-input:focus {
+    outline: none;
+    border-bottom: 1px solid var(--accent-emerald);
+}
+
 
