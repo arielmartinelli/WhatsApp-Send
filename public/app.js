@@ -464,6 +464,19 @@ function updatePreview() {
     if (selectedPhoneCol) {
         compiledTemplate = compiledTemplate.replace(/{Telefono}/gi, `{${selectedPhoneCol}}`);
     }
+    // Traducir variables de fecha, hora, link y país si existen en los encabezados
+    if (parsedHeaders.includes("Fecha Local (Cliente)")) {
+        compiledTemplate = compiledTemplate.replace(/{FechaLocal}/gi, `{Fecha Local (Cliente)}`);
+    }
+    if (parsedHeaders.includes("Hora Local (Cliente)")) {
+        compiledTemplate = compiledTemplate.replace(/{HoraLocal}/gi, `{Hora Local (Cliente)}`);
+    }
+    if (parsedHeaders.includes("Link")) {
+        compiledTemplate = compiledTemplate.replace(/{Link}/gi, `{Link}`);
+    }
+    if (parsedHeaders.includes("Pais")) {
+        compiledTemplate = compiledTemplate.replace(/{Pais}/gi, `{Pais}`);
+    }
 
     // Compilar el mensaje
     const compiled = compileTemplate(compiledTemplate, firstRow);
@@ -1228,6 +1241,19 @@ if (btnLoadLeadsToConsole) {
         }
         if (selectedPhoneCol) {
             globalTemplate = globalTemplate.replace(/{Telefono}/gi, `{${selectedPhoneCol}}`);
+        }
+        // Traducir variables de fecha, hora, link y país si existen en los encabezados
+        if (parsedHeaders.includes("Fecha Local (Cliente)")) {
+            globalTemplate = globalTemplate.replace(/{FechaLocal}/gi, `{Fecha Local (Cliente)}`);
+        }
+        if (parsedHeaders.includes("Hora Local (Cliente)")) {
+            globalTemplate = globalTemplate.replace(/{HoraLocal}/gi, `{Hora Local (Cliente)}`);
+        }
+        if (parsedHeaders.includes("Link")) {
+            globalTemplate = globalTemplate.replace(/{Link}/gi, `{Link}`);
+        }
+        if (parsedHeaders.includes("Pais")) {
+            globalTemplate = globalTemplate.replace(/{Pais}/gi, `{Pais}`);
         }
 
         const shouldUpdate = document.getElementById('leads-update-calendar-color')?.checked || false;
