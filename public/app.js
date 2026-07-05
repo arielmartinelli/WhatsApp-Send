@@ -464,19 +464,6 @@ function updatePreview() {
     if (selectedPhoneCol) {
         compiledTemplate = compiledTemplate.replace(/{Telefono}/gi, `{${selectedPhoneCol}}`);
     }
-    // Traducir variables de fecha, hora, link y país si existen en los encabezados
-    if (parsedHeaders.includes("Fecha Local (Cliente)")) {
-        compiledTemplate = compiledTemplate.replace(/{FechaLocal}/gi, `{Fecha Local (Cliente)}`);
-    }
-    if (parsedHeaders.includes("Hora Local (Cliente)")) {
-        compiledTemplate = compiledTemplate.replace(/{HoraLocal}/gi, `{Hora Local (Cliente)}`);
-    }
-    if (parsedHeaders.includes("Link")) {
-        compiledTemplate = compiledTemplate.replace(/{Link}/gi, `{Link}`);
-    }
-    if (parsedHeaders.includes("Pais")) {
-        compiledTemplate = compiledTemplate.replace(/{Pais}/gi, `{Pais}`);
-    }
 
     // Compilar el mensaje
     const compiled = compileTemplate(compiledTemplate, firstRow);
@@ -579,16 +566,6 @@ socket.on('message-status', (data) => {
             lead.error = data.error;
             if (data.status === 'sent') {
                 addToSentHistory(lead.phone, lead.text);
-                
-                // Si está activada la actualización de color en el calendario
-                if (campaignData.updateCalendarColor && lead.eventId && campaignData.webAppUrl) {
-                    updateGoogleCalendarEventColor(
-                        campaignData.webAppUrl, 
-                        campaignData.securityToken, 
-                        lead.eventId, 
-                        campaignData.targetCalendarColorId
-                    );
-                }
             }
         }
     }
@@ -1057,8 +1034,7 @@ if (btnSyncLeadsCampaign) {
                     "Fecha Original (ARG)": item.fechaOriginal || item.fechaOriginalArg || item["Fecha Original (ARG)"] || '',
                     "Fecha Local (Cliente)": item.fechaLocal || item["Fecha Local (Cliente)"] || '',
                     "Hora Local (Cliente)": item.horaLocal || item["Hora Local (Cliente)"] || '',
-                    "Link": item.link || item.Link || '',
-                    "eventId": item.eventId || item.id || ''
+                    "Link": item.link || item.Link || ''
                 };
             });
 
@@ -1242,34 +1218,12 @@ if (btnLoadLeadsToConsole) {
         if (selectedPhoneCol) {
             globalTemplate = globalTemplate.replace(/{Telefono}/gi, `{${selectedPhoneCol}}`);
         }
-        // Traducir variables de fecha, hora, link y país si existen en los encabezados
-        if (parsedHeaders.includes("Fecha Local (Cliente)")) {
-            globalTemplate = globalTemplate.replace(/{FechaLocal}/gi, `{Fecha Local (Cliente)}`);
-        }
-        if (parsedHeaders.includes("Hora Local (Cliente)")) {
-            globalTemplate = globalTemplate.replace(/{HoraLocal}/gi, `{Hora Local (Cliente)}`);
-        }
-        if (parsedHeaders.includes("Link")) {
-            globalTemplate = globalTemplate.replace(/{Link}/gi, `{Link}`);
-        }
-        if (parsedHeaders.includes("Pais")) {
-            globalTemplate = globalTemplate.replace(/{Pais}/gi, `{Pais}`);
-        }
-
-        const shouldUpdate = document.getElementById('leads-update-calendar-color')?.checked || false;
-        const targetColor = document.getElementById('leads-update-color-id')?.value || '2';
-        const webAppUrl = leadsSyncWebAppUrl?.value.trim() || '';
-        const securityToken = leadsSyncSecurityToken?.value.trim() || '';
 
         // Armar campaña
         campaignData = {
             status: 'STOPPED',
             index: 0,
             total: parsedRows.length,
-            updateCalendarColor: shouldUpdate,
-            targetCalendarColorId: targetColor,
-            webAppUrl: webAppUrl,
-            securityToken: securityToken,
             queue: parsedRows.map((row, index) => {
                 const phone = row[selectedPhoneCol];
                 const name = selectedNameCol ? row[selectedNameCol] : 'Contacto';
@@ -1280,8 +1234,7 @@ if (btnLoadLeadsToConsole) {
                     name: name,
                     phone: phone,
                     status: 'pending',
-                    text: compiledMsg,
-                    eventId: row.eventId || ''
+                    text: compiledMsg
                 };
             })
         };
@@ -1295,29 +1248,4 @@ if (btnLoadLeadsToConsole) {
 
         alert(`¡Campaña cargada con éxito! ${parsedRows.length} mensajes personalizados listos en la Consola.`);
     });
-}
-
-// Actualizar color de evento en Google Calendar vía Web App
-function updateGoogleCalendarEventColor(webAppUrl, token, eventId, colorId) {
-    if (!webAppUrl || !eventId) return;
-    const queryUrl = `${webAppUrl}?action=updateColor&eventId=${encodeURIComponent(eventId)}&colorId=${colorId}&token=${encodeURIComponent(token)}`;
-    console.log(`Petición de actualización de color para el evento ${eventId} a color ID ${colorId}... Petición: ${queryUrl}`);
-    
-    fetch(queryUrl, { method: 'GET', redirect: 'follow' })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP status ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                console.log(`[Calendar] Evento ${eventId} marcado exitosamente con color ${colorId}.`);
-            } else {
-                console.error(`[Calendar] Error devuelto por Apps Script al actualizar color:`, data.error);
-            }
-        })
-        .catch(err => {
-            console.error(`[Calendar] Error HTTP al actualizar color de evento:`, err);
-        });
 }
