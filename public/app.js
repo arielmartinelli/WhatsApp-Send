@@ -474,20 +474,43 @@ function updatePreview() {
 function compileTemplate(template, row) {
     if (!row) return template;
     let result = template;
-    // Iterar por las llaves reales del objeto fila
+    
+    // 1. Reemplazo exacto e insensible a mayúsculas para las llaves reales
     Object.keys(row).forEach(key => {
         const value = row[key] || '';
-        // Reemplazo exacto
+        
         let regex = new RegExp(`{${escapeRegExp(key)}}`, 'g');
         result = result.replace(regex, value);
         
-        // Reemplazo insensible para variables comunes (nombre, telefono, pais, link, etc.)
+        let regexCI = new RegExp(`{${escapeRegExp(key)}}`, 'gi');
+        result = result.replace(regexCI, value);
+    });
+
+    // 2. Reemplazo de alias inteligentes (Nombre, Telefono, FechaLocal, HoraLocal, Link, Pais)
+    Object.keys(row).forEach(key => {
+        const value = row[key] || '';
         const cleanKey = key.toLowerCase().replace(/\s/g, '');
-        if (['nombre', 'telefono', 'pais', 'link', 'fechalocal', 'horalocal', 'fechaoriginal(arg)', 'fechalocal(cliente)', 'horalocal(cliente)'].includes(cleanKey)) {
-            let regexCI = new RegExp(`{${escapeRegExp(key)}}`, 'gi');
-            result = result.replace(regexCI, value);
+        
+        if (cleanKey === 'nombre' || cleanKey === 'name') {
+            result = result.replace(/{Nombre}/gi, value);
+        }
+        if (cleanKey === 'telefono' || cleanKey === 'teléfono' || cleanKey === 'phone' || cleanKey === 'celular') {
+            result = result.replace(/{Telefono}/gi, value);
+        }
+        if (cleanKey.includes('fechalocal')) {
+            result = result.replace(/{FechaLocal}/gi, value);
+        }
+        if (cleanKey.includes('horalocal')) {
+            result = result.replace(/{HoraLocal}/gi, value);
+        }
+        if (cleanKey === 'link' || cleanKey === 'meet' || cleanKey === 'url') {
+            result = result.replace(/{Link}/gi, value);
+        }
+        if (cleanKey === 'pais' || cleanKey === 'país' || cleanKey === 'country') {
+            result = result.replace(/{Pais}/gi, value);
         }
     });
+
     return result;
 }
 
@@ -771,7 +794,16 @@ btnStartCampaign.addEventListener('click', () => {
     parsedRows.forEach((row) => {
         const phone = row[selectedPhoneCol];
         const name = selectedNameCol ? row[selectedNameCol] : '';
-        const compiledMsg = compileTemplate(template, row);
+        
+        let globalTemplate = template;
+        if (selectedNameCol) {
+            globalTemplate = globalTemplate.replace(/{Nombre}/gi, `{${selectedNameCol}}`);
+        }
+        if (selectedPhoneCol) {
+            globalTemplate = globalTemplate.replace(/{Telefono}/gi, `{${selectedPhoneCol}}`);
+        }
+
+        const compiledMsg = compileTemplate(globalTemplate, row);
         const cleanPhone = phone ? phone.replace(/\D/g, '') : '';
 
         const isAlreadySent = history.some(h => h.phone === cleanPhone && h.text === compiledMsg);
