@@ -566,6 +566,16 @@ socket.on('message-status', (data) => {
             lead.error = data.error;
             if (data.status === 'sent') {
                 addToSentHistory(lead.phone, lead.text);
+                
+                // Si está activada la actualización de color en el calendario
+                if (campaignData.updateCalendarColor && lead.eventId && campaignData.webAppUrl) {
+                    updateGoogleCalendarEventColor(
+                        campaignData.webAppUrl, 
+                        campaignData.securityToken, 
+                        lead.eventId, 
+                        campaignData.targetCalendarColorId
+                    );
+                }
             }
         }
     }
@@ -1034,7 +1044,8 @@ if (btnSyncLeadsCampaign) {
                     "Fecha Original (ARG)": item.fechaOriginal || item.fechaOriginalArg || item["Fecha Original (ARG)"] || '',
                     "Fecha Local (Cliente)": item.fechaLocal || item["Fecha Local (Cliente)"] || '',
                     "Hora Local (Cliente)": item.horaLocal || item["Hora Local (Cliente)"] || '',
-                    "Link": item.link || item.Link || ''
+                    "Link": item.link || item.Link || '',
+                    "eventId": item.eventId || item.id || ''
                 };
             });
 
@@ -1219,11 +1230,20 @@ if (btnLoadLeadsToConsole) {
             globalTemplate = globalTemplate.replace(/{Telefono}/gi, `{${selectedPhoneCol}}`);
         }
 
+        const shouldUpdate = document.getElementById('leads-update-calendar-color')?.checked || false;
+        const targetColor = document.getElementById('leads-update-color-id')?.value || '2';
+        const webAppUrl = leadsSyncWebAppUrl?.value.trim() || '';
+        const securityToken = leadsSyncSecurityToken?.value.trim() || '';
+
         // Armar campaña
         campaignData = {
             status: 'STOPPED',
             index: 0,
             total: parsedRows.length,
+            updateCalendarColor: shouldUpdate,
+            targetCalendarColorId: targetColor,
+            webAppUrl: webAppUrl,
+            securityToken: securityToken,
             queue: parsedRows.map((row, index) => {
                 const phone = row[selectedPhoneCol];
                 const name = selectedNameCol ? row[selectedNameCol] : 'Contacto';
@@ -1234,7 +1254,8 @@ if (btnLoadLeadsToConsole) {
                     name: name,
                     phone: phone,
                     status: 'pending',
-                    text: compiledMsg
+                    text: compiledMsg,
+                    eventId: row.eventId || ''
                 };
             })
         };
@@ -1248,4 +1269,29 @@ if (btnLoadLeadsToConsole) {
 
         alert(`¡Campaña cargada con éxito! ${parsedRows.length} mensajes personalizados listos en la Consola.`);
     });
+}
+
+// Actualizar color de evento en Google Calendar vía Web App
+function updateGoogleCalendarEventColor(webAppUrl, token, eventId, colorId) {
+    if (!webAppUrl || !eventId) return;
+    const queryUrl = `${webAppUrl}?action=updateColor&eventId=${encodeURIComponent(eventId)}&colorId=${colorId}&token=${encodeURIComponent(token)}`;
+    console.log(`Petición de actualización de color para el evento ${eventId} a color ID ${colorId}... Petición: ${queryUrl}`);
+    
+    fetch(queryUrl, { method: 'GET', redirect: 'follow' })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP status ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                console.log(`[Calendar] Evento ${eventId} marcado exitosamente con color ${colorId}.`);
+            } else {
+                console.error(`[Calendar] Error devuelto por Apps Script al actualizar color:`, data.error);
+            }
+        })
+        .catch(err => {
+            console.error(`[Calendar] Error HTTP al actualizar color de evento:`, err);
+        });
 }
