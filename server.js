@@ -178,8 +178,22 @@ async function sendNextMessage() {
         // Eliminar +, espacios, guiones y otros caracteres no numéricos
         let cleanPhone = lead.phone.replace(/\D/g, '');
         
+        // Función auxiliar para forzar un límite de tiempo (timeout) en promesas y evitar bloqueos eternos
+        const runWithTimeout = (promise, ms, timeoutErrorMsg) => {
+            return Promise.race([
+                promise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error(timeoutErrorMsg)), ms))
+            ]);
+        };
+
         console.log(`Resolviendo número en WhatsApp para: ${cleanPhone}...`);
-        const numberId = await client.getNumberId(cleanPhone);
+        
+        // Timeout de 15 segundos para getNumberId
+        const numberId = await runWithTimeout(
+            client.getNumberId(cleanPhone),
+            15000,
+            "Tiempo de espera agotado al verificar el número en WhatsApp (Timeout)"
+        );
         
         let chatId;
         if (numberId) {
@@ -192,8 +206,12 @@ async function sendNextMessage() {
             console.warn(`getNumberId no pudo verificar el número ${cleanPhone}. Usando formato fallback.`);
         }
 
-        // Enviar el mensaje
-        await client.sendMessage(chatId, lead.text);
+        // Enviar el mensaje con un timeout de 20 segundos
+        await runWithTimeout(
+            client.sendMessage(chatId, lead.text),
+            20000,
+            "Tiempo de espera agotado al enviar el mensaje por WhatsApp (Timeout)"
+        );
         
         lead.status = 'sent';
         io.emit('message-status', { id: lead.id, status: 'sent' });
